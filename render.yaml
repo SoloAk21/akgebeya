@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: akgebeya-backend
+    env: node
+    region: frankfurt
+    buildCommand: npm install && npm run build -w @akgebeya/backend
+    startCommand: npm run start -w @akgebeya/backend
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: CHAPA_SECRET_KEY
+        sync: false
+      - key: CHAPA_WEBHOOK_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+
+  - type: worker
+    name: akgebeya-bot
+    env: node
+    region: frankfurt
+    buildCommand: npm install && npm run build -w @akgebeya/bot
+    startCommand: npm run start -w @akgebeya/bot
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: BACKEND_API_URL
+        sync: false
+      - key: WEBAPP_URL
+        sync: false
