@@ -1,0 +1,283 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [postgis]
+}
+
+enum UserRole {
+  BUYER
+  PROVIDER
+  ADMIN
+}
+
+enum Language {
+  EN
+  AM
+}
+
+enum ProviderType {
+  OWNER
+  BROKER
+  AGENT
+  AGENCY
+  DEVELOPER
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PropertyCategory {
+  RESIDENTIAL
+  COMMERCIAL
+  LAND
+}
+
+enum TransactionType {
+  SALE
+  RENT
+  BUY_REQUEST
+  RENT_REQUEST
+}
+
+enum PropertyType {
+  STUDIO
+  APARTMENT
+  CONDOMINIUM
+  VILLA
+  HOUSE
+  G_PLUS_1
+  G_PLUS_2
+  OFFICE
+  SHOP
+  WAREHOUSE
+  BUILDING
+  HOTEL
+  INDUSTRIAL_LAND
+  AGRICULTURAL_LAND
+  RESIDENTIAL_LAND
+  COMMERCIAL_LAND
+}
+
+enum ListingStatus {
+  DRAFT
+  COMPLETE
+  VALIDATE
+  AI_ASSIST
+  PREVIEW
+  CALCULATE_FEE
+  PAYMENT
+  VERIFY_PAYMENT
+  PUBLISHED
+  EXPIRED
+  QUARANTINED
+  REJECTED
+}
+
+enum Currency {
+  ETB
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ReferralStatus {
+  PENDING
+  COMPLETED
+  REWARDED
+}
+
+enum NotificationType {
+  LISTING_APPROVED
+  LISTING_REJECTED
+  PAYMENT_SUCCESS
+  INQUIRY_RECEIVED
+  SAVED_SEARCH_MATCH
+  EXPIRATION_REMINDER
+  VERIFICATION_STATUS
+}
+
+model User {
+  id               String         @id @default(cuid())
+  telegramId       BigInt?        @unique
+  phone            String?        @unique
+  email            String?        @unique
+  fullName         String?
+  avatarUrl        String?
+  role             UserRole       @default(BUYER)
+  language         Language       @default(EN)
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  provider         Provider?
+  sessions         Session[]
+  notifications    Notification[]
+  referralsGiven   Referral[]     @relation("ReferrerUser")
+  referralReceived Referral?      @relation("ReferredUser")
+}
+
+model Provider {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  type               ProviderType
+  businessName       String?
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  bio                String?
+  phone              String
+  whatsapp           String?
+  publicProfileUrl   String?            @unique
+  isVerified         Boolean            @default(false)
+  softDeleted        Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listings           Listing[]
+  verifications      Verification[]
+  payments           Payment[]
+}
+
+model Verification {
+  id              String             @id @default(cuid())
+  providerId      String
+  documentType    String
+  documentUrl     String
+  status          VerificationStatus @default(PENDING)
+  rejectionReason String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  provider        Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model Location {
+  id             String                   @id @default(cuid())
+  region         String
+  city           String
+  subCity        String?
+  woreda         String?
+  kebele         String?
+  neighborhood   String?
+  streetLandmark String?
+  latitude       Float
+  longitude      Float
+  geom           Unsupported("geometry")?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  listing        Listing?
+}
+
+model Listing {
+  id            String           @id @default(cuid())
+  titleEn       String
+  titleAm       String
+  descriptionEn String
+  descriptionAm String
+  category      PropertyCategory
+  transaction   TransactionType
+  propertyType  PropertyType
+  status        ListingStatus    @default(DRAFT)
+  price         Decimal          @db.Decimal(12, 2)
+  currency      Currency         @default(ETB)
+  areaSqM       Float?
+  bedrooms      Int?
+  bathrooms     Int?
+  condition     String?
+  amenities     String[]         @default([])
+  providerId    String
+  locationId    String           @unique
+  viewsCount    Int              @default(0)
+  isQuarantined Boolean          @default(false)
+  expiresAt     DateTime?
+  publishedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  provider      Provider         @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  location      Location         @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  media         Media[]
+  payments      Payment[]
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  listingId    String
+  url          String
+  thumbnailUrl String?
+  publicId     String
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  listingId      String
+  providerId     String
+  amount         Decimal       @db.Decimal(12, 2)
+  currency       Currency      @default(ETB)
+  status         PaymentStatus @default(PENDING)
+  txRef          String        @unique
+  chapaRef       String?       @unique
+  idempotencyKey String        @unique
+  rawPayload     Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  listing        Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  provider       Provider      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Referral {
+  id            String         @id @default(cuid())
+  referrerId    String
+  referredId    String         @unique
+  code          String         @unique
+  status        ReferralStatus @default(PENDING)
+  rewardCredits Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  referrer      User           @relation("ReferrerUser", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred      User           @relation("ReferredUser", fields: [referredId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

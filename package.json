@@ -8,5 +8,8 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "@prisma/config": "^7.10.0"
   }
 }
