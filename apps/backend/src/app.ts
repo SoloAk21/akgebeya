@@ -5,6 +5,7 @@ import healthRouter from "./routes/health.route";
 import authRouter from "./routes/auth.route";
 import providerRouter from "./routes/provider.route";
 import listingRouter from "./routes/listing.route";
+import paymentRouter from "./routes/payment.route";
 import { env } from "./config/env.config";
 
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
@@ -27,5 +28,6 @@ app.use("/api/v1", healthRouter);
 app.use("/api/v1", authRouter);
 app.use("/api/v1", providerRouter);
 app.use("/api/v1", listingRouter);
+app.use("/api/v1", paymentRouter);
 
 export default app;
