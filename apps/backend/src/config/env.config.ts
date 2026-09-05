@@ -14,6 +14,7 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN is required"),
   CHAPA_SECRET_KEY: z.string().default("CHASECK_TEST-fake-chapa-secret-key"),
   CHAPA_WEBHOOK_SECRET: z.string().default("chapa-webhook-secret-akgebeya"),
+  GEMINI_API_KEY: z.string().default("AIzaSyFakeKey_For_Dev"),
 });
 
 export const env = envSchema.parse(process.env);
