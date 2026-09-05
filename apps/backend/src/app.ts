@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import healthRouter from "./routes/health.route";
 import authRouter from "./routes/auth.route";
+import providerRouter from "./routes/provider.route";
 import { env } from "./config/env.config";
 
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
@@ -23,5 +24,6 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api/v1", healthRouter);
 app.use("/api/v1", authRouter);
+app.use("/api/v1", providerRouter);
 
 export default app;
