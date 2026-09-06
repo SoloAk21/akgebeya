@@ -5,6 +5,20 @@ import {
   SearchListingInput,
 } from "../schemas/listing.schema";
 
+export type ListingWithDetails = Prisma.ListingGetPayload<{
+  include: {
+    location: true;
+    media: true;
+    provider: {
+      include: {
+        user: {
+          select: { fullName: true; avatarUrl: true };
+        };
+      };
+    };
+  };
+}>;
+
 export class ListingRepository {
   async createListing(
     providerId: string,
@@ -37,7 +51,7 @@ export class ListingRepository {
     });
   }
 
-  async findById(id: string): Promise<Listing | null> {
+  async findById(id: string): Promise<ListingWithDetails | null> {
     return prisma.listing.findUnique({
       where: { id },
       include: {
