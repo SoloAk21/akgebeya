@@ -123,6 +123,7 @@ model User {
   provider         Provider?
   sessions         Session[]
   notifications    Notification[]
+  reports          Report[]
   referralsGiven   Referral[]     @relation("ReferrerUser")
   referralReceived Referral?      @relation("ReferredUser")
 }
@@ -211,6 +212,19 @@ model Listing {
   location      Location         @relation(fields: [locationId], references: [id], onDelete: Cascade)
   media         Media[]
   payments      Payment[]
+  reports       Report[]
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  listingId  String
+  reporterId String?
+  reason     String
+  details    String?
+  createdAt  DateTime @default(now())
+
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter   User?    @relation(fields: [reporterId], references: [id], onDelete: SetNull)
 }
 
 model Media {
