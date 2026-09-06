@@ -8,6 +8,12 @@ import {
 } from "@prisma/client";
 
 export class ProviderRepository {
+  async findById(id: string): Promise<Provider | null> {
+    return prisma.provider.findUnique({
+      where: { id },
+    });
+  }
+
   async findByUserId(userId: string): Promise<Provider | null> {
     return prisma.provider.findUnique({
       where: { userId },
