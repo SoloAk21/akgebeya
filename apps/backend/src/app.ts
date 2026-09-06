@@ -8,6 +8,7 @@ import listingRouter from "./routes/listing.route";
 import paymentRouter from "./routes/payment.route";
 import aiRouter from "./routes/ai.route";
 import adminRouter from "./routes/admin.route";
+import referralRouter from "./routes/referral.route";
 import { env } from "./config/env.config";
 
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
@@ -33,5 +34,6 @@ app.use("/api/v1", listingRouter);
 app.use("/api/v1", paymentRouter);
 app.use("/api/v1", aiRouter);
 app.use("/api/v1", adminRouter);
+app.use("/api/v1", referralRouter);
 
 export default app;
