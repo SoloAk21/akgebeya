@@ -11,6 +11,7 @@ import adminRouter from "./routes/admin.route";
 import referralRouter from "./routes/referral.route";
 import inquiryRouter from "./routes/inquiry.route";
 import leaseRouter from "./routes/lease.route";
+import financialRouter from "./routes/financial.route";
 import { env } from "./config/env.config";
 
 (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
@@ -39,5 +40,6 @@ app.use("/api/v1", adminRouter);
 app.use("/api/v1", referralRouter);
 app.use("/api/v1", inquiryRouter);
 app.use("/api/v1", leaseRouter);
+app.use("/api/v1", financialRouter);
 
 export default app;
