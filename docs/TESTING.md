@@ -1,0 +1,1 @@
+automated + manual testing rules
