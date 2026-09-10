@@ -36,7 +36,32 @@ export function parseConfig(environment: NodeJS.ProcessEnv) {
 
 export type AppConfig = ReturnType<typeof parseConfig>;
 
-export function loadConfig(): AppConfig {
+export function loadEnvironment() {
   loadDotenv({ path: new URL('../.env', import.meta.url), quiet: true });
+}
+
+export function loadConfig(): AppConfig {
+  loadEnvironment();
   return parseConfig(process.env);
+}
+
+const authEnvironmentSchema = z.object({
+  AUTH_JWT_SECRET: z.string().min(43).max(172).regex(/^[A-Za-z0-9_-]+$/)
+    .refine(value => Buffer.from(value, 'base64url').length >= 32 && Buffer.from(value, 'base64url').toString('base64url') === value),
+  AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(3600),
+});
+
+export function parseAuthConfig(environment: NodeJS.ProcessEnv) {
+  const result = authEnvironmentSchema.safeParse(environment);
+  if (!result.success) {
+    const fields = [...new Set(result.error.issues.map(issue => issue.path[0]))];
+    throw new Error('Invalid authentication configuration: ' + fields.join(', '));
+  }
+  return { secret: new Uint8Array(Buffer.from(result.data.AUTH_JWT_SECRET, 'base64url')),
+    sessionTtlSeconds: result.data.AUTH_SESSION_TTL_SECONDS, issuer: 'akgebeya', audience: 'akgebeya-api' };
+}
+export type AuthConfig = ReturnType<typeof parseAuthConfig>;
+export function loadAuthConfig(): AuthConfig {
+  loadEnvironment();
+  return parseAuthConfig(process.env);
 }

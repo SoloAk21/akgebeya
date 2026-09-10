@@ -1,5 +1,19 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
+const safeErrors = {
+  UNAUTHORIZED: { status: 401, message: 'Authentication required' },
+  FORBIDDEN: { status: 403, message: 'Access denied' },
+  BAD_REQUEST: { status: 400, message: 'Invalid request' },
+} as const;
+
+export class HttpError extends Error {
+  readonly status: number;
+  constructor(readonly code: keyof typeof safeErrors) {
+    super(safeErrors[code].message);
+    this.status = safeErrors[code].status;
+  }
+}
+
 export const notFound: RequestHandler = (_request, response) => {
   response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
 };
@@ -7,6 +21,12 @@ export const notFound: RequestHandler = (_request, response) => {
 export const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, next) => {
   if (response.headersSent) {
     next(error);
+    return;
+  }
+
+  if (error instanceof HttpError) {
+    if (error.status === 401) response.set('WWW-Authenticate', 'Bearer');
+    response.status(error.status).json({ error: { code: error.code, message: error.message } });
     return;
   }
 

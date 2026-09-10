@@ -1,28 +1,14 @@
 import assert from 'node:assert/strict';
-import { once } from 'node:events';
-import { createServer } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { test } from 'node:test';
 import express from 'express';
 import { createApp } from '../src/app.js';
 import { parseConfig } from '../src/config.js';
 import { errorHandler } from '../src/errors.js';
 
-async function withServer(app: ReturnType<typeof express>, run: (base: string) => Promise<void>) {
-  const server = createServer(app);
-  server.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  try {
-    await run(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
-  } finally {
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
-      server.closeAllConnections();
-    });
-  }
-}
+import { withServer } from './helpers.js';
+import { createAuthFixture } from './auth-fixture.js';
 
-const app = () => createApp(parseConfig({ NODE_ENV: 'test' }));
+const app = () => createApp(parseConfig({ NODE_ENV: 'test' }), createAuthFixture().service);
 
 test('health returns HTTP 200 JSON with security headers', async () => {
   await withServer(app(), async (base) => {
@@ -46,7 +32,7 @@ test('unknown paths and unsupported methods return JSON 404', async () => {
 });
 
 test('CORS allows configured origins and omits permission for others', async () => {
-  await withServer(createApp(parseConfig({ CORS_ORIGINS: 'https://example.com' })), async (base) => {
+  await withServer(createApp(parseConfig({ CORS_ORIGINS: 'https://example.com' }), createAuthFixture().service), async (base) => {
     for (const origin of ['https://example.com', 'https://untrusted.example']) {
       const response = await fetch(`${base}/api/v1/health`, { headers: { origin } });
       assert.equal(response.headers.get('access-control-allow-origin'), origin === 'https://example.com' ? origin : null);

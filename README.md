@@ -10,7 +10,8 @@ and Prisma. Use Node.js 22.14 or a compatible newer release.
 
 Copy `apps/backend/.env.example` to `apps/backend/.env` for local configuration.
 The example URLs suffice for client generation; live database checks require your
-configured development database. From the repository root:
+configured development database. Starting the server also requires AUTH_JWT_SECRET
+(see the authentication guide below). From the repository root:
 
 ```sh
 npm ci
@@ -59,8 +60,17 @@ npm run db:status --workspace apps/backend
 npm run test:database --workspace apps/backend
 ```
 
-The health endpoint remains database-independent. Authentication, payment logic,
-listing services, frontend/bot code, and Step 4 are not implemented.
+The health check does not query the database. Payment logic, listing services,
+frontend/bot code, and login-provider integrations are not implemented.
+
+## Authentication (Step 4.1)
+
+Database-backed JWT sessions now support `GET /api/v1/auth/me` and
+`POST /api/v1/auth/logout`, with session revocation and role middleware. There is
+no public token-issuance endpoint. See [authentication setup and exact curl
+commands](docs/AUTHENTICATION.md) for configuration, boundaries, and expected JSON.
+Run `npm run verify:auth --workspace apps/backend` after building for live curl and
+Session-row verification using a temporary development fixture.
 
 The workspace paths are `apps/frontend`, `apps/backend`, `apps/bot`, and
 `packages/shared`. Engineering rules are in `AGENTS.md`; project documentation

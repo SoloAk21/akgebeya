@@ -1,7 +1,8 @@
 # Database foundation (Step 3)
 
-PostgreSQL with PostGIS, managed through Prisma migrations. No authentication,
-payment processing, listing services, controllers, or Step 4 behavior is included.
+PostgreSQL with PostGIS, managed through Prisma migrations. The database models
+remain unchanged by [authentication Step 4.1](AUTHENTICATION.md). Payment processing
+and listing behavior remain outside the database foundation.
 
 ## Database target and Neon
 
@@ -108,11 +109,12 @@ and plan a reviewed baseline/data migration instead of resetting it.
 
 Generated client files are ignored and must be regenerated after checkout or schema
 changes, before typechecking/tests. The existing npm-managed Prisma versions are
-unchanged. No additional packages are required.
+unchanged. Database setup requires no additional packages.
 
 The offline suite checks backend behavior and database configuration. The live
 suite requires the migrated development branch: it checks actual catalog objects,
 both Neon endpoints, relations, precision, uniqueness, foreign keys, CHECK
-constraints and spatial operations. All test records are created inside a
-transaction and rolled back even on failure. Missing database configuration fails
+constraints and spatial operations. Database-foundation fixtures are created inside a
+transaction and rolled back even on failure. Authentication integration tests use
+uniquely identified temporary users/sessions and delete them in cleanup. Missing database configuration fails
 explicitly; live checks are never silently skipped.

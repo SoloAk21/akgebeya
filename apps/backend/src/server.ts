@@ -1,10 +1,16 @@
+import { createDatabaseClient } from './database.js';
+import { AuthService } from './auth/service.js';
+import { PrismaAuthRepository } from './auth/repository.js';
 import { createServer } from 'node:http';
 import { createApp } from './app.js';
-import { loadConfig } from './config.js';
+import { loadConfig, loadAuthConfig } from './config.js';
 
 try {
   const config = loadConfig();
-  const server = createServer(createApp(config));
+  const authConfig = loadAuthConfig();
+  const database = createDatabaseClient('pooled');
+  const auth = new AuthService(new PrismaAuthRepository(database), authConfig);
+  const server = createServer(createApp(config, auth));
   server.listen(config.port, config.host, () => {
     console.log(`Backend listening at http://${config.host}:${config.port}${config.apiPrefix}`);
   });
@@ -12,6 +18,7 @@ try {
   server.on('error', (error: NodeJS.ErrnoException) => {
     console.error(`Server failed: ${error.code ?? 'UNKNOWN'}`);
     process.exitCode = 1;
+    void database.$disconnect().catch(() => { console.error('Database shutdown failed'); });
   });
 
   let shuttingDown = false;
@@ -23,7 +30,8 @@ try {
       process.exit(1);
     }, 10_000);
     timeout.unref();
-    server.close((error) => {
+    server.close(async (error) => {
+      try { await database.$disconnect(); } catch { process.exitCode = 1; console.error('Database shutdown failed'); }
       clearTimeout(timeout);
       if (error) {
         console.error('Server shutdown failed');
