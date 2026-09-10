@@ -1,10 +1,333 @@
-// Model definitions and database connectivity belong to a later step.
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum ProviderStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+enum PropertyType {
+  APARTMENT
+  HOUSE
+  LAND
+  COMMERCIAL
+  OTHER
+}
+
+enum Currency {
+  ETB
+}
+
+enum PaymentGateway {
+  CHAPA
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum VerificationType {
+  EMAIL
+  PHONE
+  IDENTITY
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum MediaVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum ReferralStatus {
+  PENDING
+  QUALIFIED
+  REWARDED
+  CANCELLED
+}
+
+enum NotificationType {
+  SYSTEM
+  LISTING
+  PAYMENT
+  VERIFICATION
+  REFERRAL
+}
+
+model User {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String?    @unique @db.VarChar(320)
+  phone           String?    @unique @db.VarChar(16)
+  displayName     String     @db.VarChar(120)
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  preferredLocale String     @default("en") @db.VarChar(2)
+  referralCode    String?    @unique @db.VarChar(32)
+  createdAt       DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @updatedAt @db.Timestamptz(6)
+  deletedAt       DateTime?  @db.Timestamptz(6)
+
+  provider              Provider?
+  payments              Payment[]
+  sessions              Session[]
+  verifications         Verification[] @relation("VerificationSubject")
+  reviewedVerifications Verification[] @relation("VerificationReviewer")
+  media                 Media[]
+  referralsSent         Referral[]     @relation("ReferralSender")
+  referralReceived      Referral?      @relation("ReferralRecipient")
+  notifications         Notification[]
+
+  @@index([status, createdAt])
+  @@map("users")
+}
+
+model Provider {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String         @unique @db.Uuid
+  nameEn        String         @db.VarChar(160)
+  nameAm        String?        @db.VarChar(160)
+  descriptionEn String?        @db.Text
+  descriptionAm String?        @db.Text
+  status        ProviderStatus @default(PENDING)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  listings Listing[]
+
+  @@index([status, createdAt])
+  @@map("providers")
+}
+
+model Listing {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  providerId    String        @db.Uuid
+  locationId    String        @db.Uuid
+  titleEn       String        @db.VarChar(200)
+  titleAm       String?       @db.VarChar(200)
+  descriptionEn String        @db.Text
+  descriptionAm String?       @db.Text
+  type          ListingType
+  propertyType  PropertyType
+  status        ListingStatus @default(DRAFT)
+  price         Decimal       @db.Decimal(18, 2)
+  currency      Currency      @default(ETB)
+  bedrooms      Int?          @db.SmallInt
+  bathrooms     Int?          @db.SmallInt
+  areaSqm       Decimal?      @db.Decimal(12, 2)
+  publishedAt   DateTime?     @db.Timestamptz(6)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime      @default(now()) @updatedAt @db.Timestamptz(6)
+  deletedAt     DateTime?     @db.Timestamptz(6)
+
+  provider Provider  @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  location Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  payments Payment[]
+  media    Media[]
+
+  @@index([providerId, status, createdAt])
+  @@index([locationId, status])
+  @@index([status, type, propertyType, price])
+  @@index([status, publishedAt])
+  @@map("listings")
+}
+
+model Location {
+  id          String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  countryCode String                                @default("ET") @db.Char(2)
+  regionEn    String                                @db.VarChar(120)
+  regionAm    String?                               @db.VarChar(120)
+  cityEn      String                                @db.VarChar(120)
+  cityAm      String?                               @db.VarChar(120)
+  subcityEn   String?                               @db.VarChar(120)
+  subcityAm   String?                               @db.VarChar(120)
+  addressEn   String?                               @db.VarChar(500)
+  addressAm   String?                               @db.VarChar(500)
+  // Write/read this field with parameterized PostGIS SQL. Longitude precedes latitude.
+  coordinates Unsupported("geography(Point,4326)")?
+  createdAt   DateTime                              @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime                              @default(now()) @updatedAt @db.Timestamptz(6)
+
+  listings Listing[]
+
+  @@index([countryCode, regionEn, cityEn])
+  @@index([coordinates], type: Gist)
+  @@map("locations")
+}
+
+model Payment {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String         @db.Uuid
+  listingId           String?        @db.Uuid
+  gateway             PaymentGateway @default(CHAPA)
+  gatewayReference    String?        @db.VarChar(128)
+  idempotencyKey      String         @unique @db.VarChar(128)
+  // Integer minor units (ETB cents); no floating-point monetary amounts.
+  amountMinor         BigInt         @db.BigInt
+  refundedAmountMinor BigInt         @default(0) @db.BigInt
+  currency            Currency       @default(ETB)
+  status              PaymentStatus  @default(PENDING)
+  paidAt              DateTime?      @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@unique([gateway, gatewayReference])
+  @@index([userId, createdAt])
+  @@index([listingId])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+model Session {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique @db.Char(64)
+  expiresAt  DateTime  @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+  lastSeenAt DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Verification {
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String             @db.Uuid
+  reviewerId String?            @db.Uuid
+  type       VerificationType
+  status     VerificationStatus @default(PENDING)
+  target     String?            @db.VarChar(320)
+  tokenHash  String?            @unique @db.Char(64)
+  expiresAt  DateTime           @db.Timestamptz(6)
+  reviewedAt DateTime?          @db.Timestamptz(6)
+  createdAt  DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user     User    @relation("VerificationSubject", fields: [userId], references: [id], onDelete: Restrict)
+  reviewer User?   @relation("VerificationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  media    Media[]
+
+  @@index([userId, type, status])
+  @@index([reviewerId])
+  @@index([status, expiresAt])
+  @@map("verifications")
+}
+
+model Media {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uploadedById   String          @db.Uuid
+  listingId      String?         @db.Uuid
+  verificationId String?         @db.Uuid
+  objectKey      String          @unique @db.VarChar(512)
+  type           MediaType
+  visibility     MediaVisibility @default(PRIVATE)
+  mimeType       String          @db.VarChar(100)
+  sizeBytes      BigInt          @db.BigInt
+  altEn          String?         @db.VarChar(300)
+  altAm          String?         @db.VarChar(300)
+  position       Int             @default(0)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  listing      Listing?      @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  verification Verification? @relation(fields: [verificationId], references: [id], onDelete: Restrict)
+
+  @@index([uploadedById, createdAt])
+  @@index([listingId, position])
+  @@index([verificationId])
+  @@map("media")
+}
+
+model Referral {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrerId     String         @db.Uuid
+  referredUserId String         @unique @db.Uuid
+  status         ReferralStatus @default(PENDING)
+  qualifiedAt    DateTime?      @db.Timestamptz(6)
+  rewardedAt     DateTime?      @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+
+  referrer     User @relation("ReferralSender", fields: [referrerId], references: [id], onDelete: Restrict)
+  referredUser User @relation("ReferralRecipient", fields: [referredUserId], references: [id], onDelete: Restrict)
+
+  @@index([referrerId, status, createdAt])
+  @@map("referrals")
+}
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType @default(SYSTEM)
+  titleEn   String           @db.VarChar(200)
+  titleAm   String?          @db.VarChar(200)
+  bodyEn    String           @db.Text
+  bodyAm    String?          @db.Text
+  readAt    DateTime?        @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }

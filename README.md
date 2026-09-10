@@ -3,15 +3,18 @@
 An npm monorepo with a backend foundation. Frontend, bot, and shared packages
 remain empty placeholders.
 
-## Backend (Step 2)
+## Backend
 
 The backend uses Node.js, Express, strict TypeScript, CORS, Helmet, dotenv, Zod,
 and Prisma. Use Node.js 22.14 or a compatible newer release.
 
-From the repository root:
+Copy `apps/backend/.env.example` to `apps/backend/.env` for local configuration.
+The example URLs suffice for client generation; live database checks require your
+configured development database. From the repository root:
 
 ```sh
 npm ci
+npm run prisma:generate --workspace apps/backend
 npm run typecheck --workspace apps/backend
 npm test --workspace apps/backend
 npm run build --workspace apps/backend
@@ -22,7 +25,7 @@ For development, run `npm run dev --workspace apps/backend`.
 No lint tool is configured; typecheck and automated HTTP/configuration tests are
 available. The build emits only backend runtime code into `apps/backend/dist`.
 
-Optionally copy `apps/backend/.env.example` to `apps/backend/.env`. Configuration
+Backend configuration
 is centralized and validated with Zod at startup. Defaults are development mode,
 host `127.0.0.1`, port `3000`, and no allowed cross-origin browser origins.
 `CORS_ORIGINS` accepts comma-separated HTTP(S) origins. Existing environment
@@ -41,16 +44,23 @@ health check; it does not query a database. Unknown routes return JSON `404`
 errors; malformed JSON returns `400`, oversized JSON returns `413`, unsupported
 body encodings return `415`, and unexpected errors return a generic JSON `500`.
 
-Prisma includes an empty PostgreSQL schema. There are no
-models, migrations, generated client, credentials, or database connections.
-Database connectivity and client generation are deferred to a later step.
-To validate the schema, copy `apps/backend/.env.example` to `apps/backend/.env`
-and run `npm run prisma:validate --workspace apps/backend`. The example URL has
-no credentials; validation does not connect to it. The server does not require
-`DATABASE_URL`. Prisma CLI and client versions are selected by npm audit and
-saved exactly by npm to avoid reintroducing the reported tooling advisories.
-The health handler needs no service or repository because it has no business
-logic or persistence. Authentication and Step 3 are not implemented.
+## Database (Step 3)
+
+The ten-model PostgreSQL foundation uses the `akgebeya` schema, with PostGIS and
+versioned, transactional migrations. Existing legacy `public` tables are preserved.
+See [database setup and design](docs/DATABASE.md) for Neon URLs, model relationships,
+constraints, spatial queries, and verification commands.
+
+```sh
+npm run prisma:validate --workspace apps/backend
+npm run db:inspect --workspace apps/backend
+npm run db:migrate --workspace apps/backend
+npm run db:status --workspace apps/backend
+npm run test:database --workspace apps/backend
+```
+
+The health endpoint remains database-independent. Authentication, payment logic,
+listing services, frontend/bot code, and Step 4 are not implemented.
 
 The workspace paths are `apps/frontend`, `apps/backend`, `apps/bot`, and
 `packages/shared`. Engineering rules are in `AGENTS.md`; project documentation

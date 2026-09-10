@@ -8,7 +8,12 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "prisma:validate": "prisma validate"
+    "prisma:validate": "prisma validate",
+    "prisma:generate": "prisma generate",
+    "db:inspect": "tsx prisma/inspect.ts",
+    "db:migrate": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "test:database": "tsx --test test/database/*.test.ts"
   },
   "dependencies": {
     "@prisma/client": "6.12.0",
