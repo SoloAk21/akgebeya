@@ -1,0 +1,10 @@
+{
+  "name": "akgebeya",
+  "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "apps/bot",
+    "packages/shared"
+  ]
+}
