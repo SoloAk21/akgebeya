@@ -10,7 +10,7 @@ and Prisma. Use Node.js 22.14 or a compatible newer release.
 
 Copy `apps/backend/.env.example` to `apps/backend/.env` for local configuration.
 The example URLs suffice for client generation; live database checks require your
-configured development database. Starting the server also requires AUTH_JWT_SECRET
+configured development database. Starting the server also requires AUTH_JWT_SECRET and TELEGRAM_BOT_TOKEN
 (see the authentication guide below). From the repository root:
 
 ```sh
@@ -61,13 +61,12 @@ npm run test:database --workspace apps/backend
 ```
 
 The health check does not query the database. Payment logic, listing services,
-frontend/bot code, and login-provider integrations are not implemented.
+frontend/bot code, phone OTP, and Google OAuth are not implemented.
 
-## Authentication (Step 4.1)
+## Authentication (Steps 4.1–4.2)
 
 Database-backed JWT sessions now support `GET /api/v1/auth/me` and
-`POST /api/v1/auth/logout`, with session revocation and role middleware. There is
-no public token-issuance endpoint. See [authentication setup and exact curl
+`POST /api/v1/auth/logout`, with session revocation and role middleware. Telegram Mini Apps can log in through POST /api/v1/auth/telegram using server-verified initData. See [authentication setup and exact curl
 commands](docs/AUTHENTICATION.md) for configuration, boundaries, and expected JSON.
 Run `npm run verify:auth --workspace apps/backend` after building for live curl and
 Session-row verification using a temporary development fixture.

@@ -1,6 +1,6 @@
-# Authentication foundation (Step 4.1)
+# Authentication (Steps 4.1–4.2)
 
-Only `GET /api/v1/auth/me` and `POST /api/v1/auth/logout` are added. There is no
+Step 4.1 added `GET /api/v1/auth/me` and `POST /api/v1/auth/logout`. In that foundation there was no
 login, signup, refresh, impersonation, or token-issuance HTTP endpoint. Telegram,
 phone OTP, Google OAuth, provider verification, and payment/listing behavior remain
 outside this step.
@@ -134,3 +134,101 @@ Automated tests cover claims/signatures/expiration, duplicate Authorization
 headers, inactive users, logout/revocation, role changes, untrusted IDs/roles, safe
 errors, and real Neon persistence. The live auth test creates isolated temporary
 fixtures and deletes them in cleanup; it never modifies an existing user's session.
+
+## Telegram authentication (Step 4.2)
+
+`POST /api/v1/auth/telegram` accepts only a JSON object containing `initData`, the
+unchanged `Telegram.WebApp.initData` string. Query parameters and extra body fields
+are rejected. Never send `initDataUnsafe`, a separate user ID, or a requested role.
+
+The server follows [Telegram's official bot-token verification algorithm](https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app):
+decode the query string, exclude only `hash`, sort the other fields alphabetically,
+and join `key=value` entries with line feeds. Derive the HMAC-SHA-256 key from the
+bot token with `WebAppData` as the key, then HMAC the data-check-string and compare
+the received hexadecimal hash in constant time. If present, `signature` remains
+part of this bot-token check; the separate third-party Ed25519 flow is not used.
+
+Malformed encoding, duplicate keys, ambiguous line breaks, missing required
+fields, malformed user JSON, invalid IDs, bots, invalid hashes, future auth dates,
+and stale auth dates receive safe 401 errors. The age must be strictly below
+the configured maximum. User JSON is parsed only after signature and freshness
+verification. Reusing valid initData within that window creates another session;
+there is no one-time initData consumption or refresh flow in this step.
+
+The verified numeric ID maps only to the nullable unique `User.telegramId`
+(PostgreSQL BIGINT). Names and usernames never link accounts. New users have null
+email/phone and database-default USER/ACTIVE role/status. Only display name and
+an en/am locale are mapped from verified data. Other Telegram fields are ignored.
+Repeat login preserves local profile fields and permissions, and concurrent first
+logins converge through the unique index. Suspended, deactivated and deleted
+users cannot receive sessions. Linking Telegram to an existing email/phone user
+is outside this step.
+
+The controller validates HTTP input and returns the service result.
+`TelegramAuthService` verifies identity, resolves it through
+`PrismaTelegramRepository`, and delegates session creation to the existing
+`AuthService.createSessionForVerifiedUser`. JWT validation, expiration, database
+session hashing, RBAC, current-user and logout behavior remain shared.
+
+### Configuration
+
+Add the real `TELEGRAM_BOT_TOKEN` privately to the ignored backend `.env` or inject it
+from a secret manager. Server startup requires it. Never put the token in a shell
+command, URL, source file, log or Git. `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS` defaults
+to 300 and accepts 30–600 seconds. Both are read through centralized configuration.
+
+The new migration `20260911000000_telegram_identity` adds the nullable unique
+BIGINT and replaces the identity CHECK with “email, phone or telegramId present.”
+The original applied migration is unchanged. It targets only `akgebeya.users`,
+uses a transaction and lock/statement timeouts, and preserves existing rows.
+The initial application schema contained zero users; before/after snapshots
+verified all 22 existing application/public tables, including PostGIS reference
+data, were preserved when the migration was applied.
+
+### Safe local manual verification
+
+From the repository root, with the development Neon URLs and existing auth key
+configured locally:
+
+```powershell
+npm run typecheck --workspace apps/backend
+npm test --workspace apps/backend
+npm run test:database --workspace apps/backend
+npm run build --workspace apps/backend
+npm exec --workspace apps/backend -- tsx scripts/verify-telegram.ts
+npm run verify:auth --workspace apps/backend
+```
+
+The Telegram verifier generates an ephemeral synthetic bot token in memory and
+passes it only to an isolated compiled backend process on a free loopback port.
+It does not read or change the real bot token. It signs a synthetic identity,
+passes JSON to curl through stdin (`--data-binary @-`), and keeps returned JWTs
+in memory. This exercises the actual HTTP/backend/Neon path; it does not simulate
+a real Telegram client launch. The real bot token must still be configured for
+normal server startup.
+
+It checks malformed input, expired data, two logins resolving one User, two Session
+rows storing only hashed identifiers, matching expiration, authenticated
+`/auth/me`, logout revocation, and rejected revoked-session access. It removes its
+temporary user and cascading sessions and stops the server even after a failure.
+Only sanitized outcomes are printed.
+
+For a real Telegram-issued initData string privately held in the PowerShell
+variable `$telegramInitData`, the equivalent curl request is:
+
+```powershell
+$payload = @{ initData = $telegramInitData } | ConvertTo-Json -Compress
+$login = ($payload | curl.exe --silent --show-error --fail-with-body --header 'Content-Type: application/json' --data-binary '@-' http://127.0.0.1:3000/api/v1/auth/telegram) | ConvertFrom-Json
+# Do not print $payload or $login; $login.token is a bearer credential.
+```
+
+Successful login: HTTP **200**,
+`{"token":"<JWT>","expiresAt":"<ISO-8601 UTC timestamp>"}`, with
+`Cache-Control: no-store`. Current-user and logout responses are documented above.
+Invalid signature, malformed initData or expired auth_date: HTTP **401**,
+`{"error":{"code":"UNAUTHORIZED","message":"Authentication required"}}`.
+Missing/wrong request fields: HTTP **400**,
+`{"error":{"code":"BAD_REQUEST","message":"Invalid request"}}`.
+Invalid JSON uses the existing **400 INVALID_JSON** error; oversized bodies use
+**413 PAYLOAD_TOO_LARGE**. Unexpected database failures use the generic **500**
+response and never print initData, hashes, tokens, or database details.

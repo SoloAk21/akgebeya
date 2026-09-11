@@ -1,9 +1,11 @@
+import type { TelegramAuthService } from './telegram-service.js';
+import { telegramController } from './telegram-controller.js';
 import { Router } from 'express';
 import type { AuthService } from './service.js';
 import { authController } from './controller.js';
 import { authenticate, validateEmptyRequest } from './middleware.js';
 
-export function authRouter(service: AuthService) {
+export function authRouter(service: AuthService, telegram?: TelegramAuthService) {
   const router = Router();
   const controller = authController(service);
   router.use((_request, response, next) => {
@@ -11,6 +13,7 @@ export function authRouter(service: AuthService) {
     response.vary('Authorization');
     next();
   });
+  if (telegram) router.post('/telegram', telegramController(telegram));
   router.get('/me', authenticate(service), validateEmptyRequest, controller.me);
   router.post('/logout', authenticate(service), validateEmptyRequest, controller.logout);
   return router;

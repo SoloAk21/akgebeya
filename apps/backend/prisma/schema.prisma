@@ -106,6 +106,7 @@ enum NotificationType {
 
 model User {
   id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  telegramId      BigInt?     @unique @db.BigInt
   email           String?    @unique @db.VarChar(320)
   phone           String?    @unique @db.VarChar(16)
   displayName     String     @db.VarChar(120)

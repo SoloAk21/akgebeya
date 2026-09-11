@@ -50,7 +50,7 @@ test('Neon contains all ten tables, UUID primary keys, timezone timestamps, fore
     JOIN pg_class t ON t.oid = i.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'akgebeya' AND t.relname <> '_prisma_migrations'
   `;
-  assert.equal(indexes[0]?.count, 41);
+  assert.equal(indexes[0]?.count, 42);
   assert.equal(indexes[0]?.all_valid, true);
   const checks = await database.$queryRaw<{ count: number; all_valid: boolean }[]>`
     SELECT count(*)::int AS count, bool_and(c.convalidated) AS all_valid

@@ -118,3 +118,12 @@ constraints and spatial operations. Database-foundation fixtures are created ins
 transaction and rolled back even on failure. Authentication integration tests use
 uniquely identified temporary users/sessions and delete them in cleanup. Missing database configuration fails
 explicitly; live checks are never silently skipped.
+
+## Telegram identity migration (Step 4.2)
+
+The second migration adds nullable unique User.telegramId (BIGINT) and extends
+users_identity_check to require at least one of email, phone or telegramId.
+Existing contact identifiers, relations and the original migration are unchanged.
+There are now 42 application indexes and still 24 CHECK constraints.
+See [Telegram authentication](AUTHENTICATION.md#telegram-authentication-step-42)
+for identity mapping, configuration and verification.

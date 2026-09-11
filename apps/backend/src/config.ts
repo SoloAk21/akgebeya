@@ -65,3 +65,21 @@ export function loadAuthConfig(): AuthConfig {
   loadEnvironment();
   return parseAuthConfig(process.env);
 }
+
+const telegramEnvironmentSchema = z.object({
+  TELEGRAM_BOT_TOKEN: z.string().regex(/^[0-9]+:[A-Za-z0-9_-]{30,}$/),
+  TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: z.coerce.number().int().min(30).max(600).default(300),
+});
+export function parseTelegramConfig(environment: NodeJS.ProcessEnv) {
+  const result = telegramEnvironmentSchema.safeParse(environment);
+  if (!result.success) {
+    const fields = [...new Set(result.error.issues.map(issue => issue.path[0]))];
+    throw new Error('Invalid Telegram configuration: ' + fields.join(', '));
+  }
+  return { botToken: result.data.TELEGRAM_BOT_TOKEN, maxAgeSeconds: result.data.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS };
+}
+export type TelegramConfig = ReturnType<typeof parseTelegramConfig>;
+export function loadTelegramConfig(): TelegramConfig {
+  loadEnvironment();
+  return parseTelegramConfig(process.env);
+}
