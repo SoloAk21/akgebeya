@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  ACCOUNT_LINKING_CONFLICT: { status: 409, message: 'Account linking required' },
   UNAUTHORIZED: { status: 401, message: 'Authentication required' },
   FORBIDDEN: { status: 403, message: 'Access denied' },
   TOO_MANY_REQUESTS: { status: 429, message: 'Please try again later' },

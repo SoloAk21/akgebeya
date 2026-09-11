@@ -100,7 +100,11 @@ test('Neon serializes OTP requests/attempts, consumes exactly once with session,
     const failures = await Promise.allSettled(Array.from({ length: 9 }, () => service.verify({
       phone, challengeId: delivery.challengeId, otp: wrongOtp(delivery.otp),
     })));
-    assert.ok(failures.every(r => r.status === 'rejected' && denied(r.reason)));
+    assert.ok(failures.every(r => r.status === 'rejected' && denied(r.reason)),
+      'Concurrent verification outcomes: ' + failures.map(r => r.status === 'fulfilled' ? 'fulfilled'
+        : r.reason instanceof HttpError ? r.reason.code
+        : r.reason instanceof Prisma.PrismaClientKnownRequestError ? r.reason.code + '/' + String(r.reason.meta?.code)
+        : 'unknown').join(', '));
     row = await db.phoneOtp.findUniqueOrThrow({ where: { phone } });
     assert.equal(row.attemptCount, config.maxAttempts); assert.ok(row.revokedAt);
     await assert.rejects(() => service.verify({ phone, challengeId: delivery.challengeId, otp: delivery.otp }), denied);

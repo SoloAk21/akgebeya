@@ -123,3 +123,12 @@ export function loadPhoneOtpConfig(): PhoneOtpConfig {
   loadEnvironment();
   return parsePhoneOtpConfig(process.env);
 }
+
+const googleEnvironmentSchema = z.object({ GOOGLE_CLIENT_ID: z.string().regex(/^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/).optional() });
+export function parseGoogleConfig(environment: NodeJS.ProcessEnv) {
+  const result = googleEnvironmentSchema.safeParse(environment);
+  if (!result.success) throw new Error("Invalid Google configuration: GOOGLE_CLIENT_ID");
+  return { clientId: result.data.GOOGLE_CLIENT_ID };
+}
+export type GoogleConfig = ReturnType<typeof parseGoogleConfig>;
+export function loadGoogleConfig(): GoogleConfig { loadEnvironment(); return parseGoogleConfig(process.env); }

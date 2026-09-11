@@ -238,3 +238,9 @@ response and never print initData, hashes, tokens, or database details.
 Phone OTP request/verify endpoints, the private development transport, constraints,
 and exact curl/Postman/Neon manual checks are documented in [Phone OTP](PHONE_OTP.md).
 The existing session, current-user, logout, RBAC and Telegram flows are reused.
+
+## Google authentication (Step 4.4)
+
+POST /api/v1/auth/google verifies Google ID tokens and reuses database-backed sessions.
+See [Google authentication](GOOGLE_AUTH.md) for identity conflicts, configuration,
+exact curl/Postman checks and the required real-Google development verification.

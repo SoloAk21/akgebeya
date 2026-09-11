@@ -135,3 +135,10 @@ resend cooldown, failed-attempt counter and consumption/revocation timestamps.
 It adds four indexes and seven checks: the application schema now has eleven
 tables, 46 indexes and 31 CHECK constraints. Existing models and applied migrations
 are unchanged. See [Phone OTP](PHONE_OTP.md) for atomicity and verification.
+
+## Google identity migration (Step 4.4)
+
+The new migration adds nullable unique User.googleSub (VARCHAR(255)) and rejects
+blank/whitespace-only subjects. The existing identity CHECK and all other models
+remain unchanged. There are now 47 indexes and 32 CHECK constraints.
+See [Google authentication](GOOGLE_AUTH.md) for verification and account conflicts.

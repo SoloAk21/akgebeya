@@ -85,3 +85,9 @@ See [Phone OTP setup and manual curl/Postman verification](docs/PHONE_OTP.md).
 npm run build --workspace apps/backend
 node --import tsx apps/backend/scripts/verify-phone.ts
 ```
+
+## Google authentication (Step 4.4)
+
+POST /api/v1/auth/google verifies Google ID tokens and issues existing database-backed
+sessions. Email conflicts require a later explicit account-linking flow.
+See [Google setup and curl/Postman/real-login verification](docs/GOOGLE_AUTH.md).

@@ -13,7 +13,7 @@
     "db:inspect": "tsx prisma/inspect.ts",
     "db:migrate": "prisma migrate deploy",
     "db:status": "prisma migrate status",
-    "test:database": "tsx --test test/database/*.test.ts",
+    "test:database": "tsx --test --test-concurrency=1 test/database/*.test.ts",
     "verify:auth": "tsx scripts/verify-auth.ts"
   },
   "dependencies": {

@@ -1,3 +1,5 @@
+import { googleController } from './google-controller.js';
+import type { GoogleAuthService } from './google-service.js';
 import type { TelegramAuthService } from './telegram-service.js';
 import { telegramController } from './telegram-controller.js';
 import type { PhoneOtpService } from './phone-service.js';
@@ -7,7 +9,7 @@ import type { AuthService } from './service.js';
 import { authController } from './controller.js';
 import { authenticate, validateEmptyRequest } from './middleware.js';
 
-export function authRouter(service: AuthService, telegram?: TelegramAuthService, phone?: PhoneOtpService) {
+export function authRouter(service: AuthService, telegram?: TelegramAuthService, phone?: PhoneOtpService, google?: GoogleAuthService) {
   const router = Router();
   const controller = authController(service);
   router.use((_request, response, next) => {
@@ -15,6 +17,7 @@ export function authRouter(service: AuthService, telegram?: TelegramAuthService,
     response.vary('Authorization');
     next();
   });
+  if (google) router.post('/google', googleController(google));
   if (telegram) router.post('/telegram', telegramController(telegram));
   if (phone) {
     const controller = phoneController(phone);

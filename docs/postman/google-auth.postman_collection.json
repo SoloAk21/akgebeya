@@ -1,0 +1,723 @@
+{
+  "info": {
+    "name": "AkGebeya Google authentication ? Step 4.4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1/auth"
+    },
+    {
+      "key": "fixtureUrl",
+      "value": ""
+    },
+    {
+      "key": "fixtureKey",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Malformed body",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"INVALID_JSON\",\"message\":\"Invalid JSON body\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Missing token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Untrusted role",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"invalid\",\"role\":\"ADMIN\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 400', () => pm.response.to.have.status(400));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/invalid', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid signature",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/signature', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wrong audience",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/audience', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wrong issuer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/issuer', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expired token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/expired', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unverified email",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/unverified', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Valid Google authentication",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/valid', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Session response only', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['expiresAt','token']));",
+              "pm.collectionVariables.set('sessionToken',pm.response.json().token);",
+              "pm.sendRequest({url:pm.collectionVariables.get('fixtureUrl')+'/session',method:'POST',header:{Authorization:'Bearer '+pm.collectionVariables.get('fixtureKey'),'Content-Type':'application/json'},body:{mode:'raw',raw:JSON.stringify({token:pm.response.json().token})}},(err,res)=>{pm.test('Neon session ownership verified',()=>{pm.expect(err).to.eql(null);pm.expect(res.code).to.eql(200);});});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Current user",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/me"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Current user', () => { const id=pm.response.json().user.id; const previous=pm.collectionVariables.get('userId'); if(previous) pm.expect(id).to.eql(previous); pm.collectionVariables.set('userId',id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/logout"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Logout response', () => pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Current user after logout",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/me"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Repeat Google login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/repeat', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Session response only', () => pm.expect(Object.keys(pm.response.json()).sort()).to.eql(['expiresAt','token']));",
+              "pm.collectionVariables.set('sessionToken',pm.response.json().token);",
+              "pm.sendRequest({url:pm.collectionVariables.get('fixtureUrl')+'/session',method:'POST',header:{Authorization:'Bearer '+pm.collectionVariables.get('fixtureKey'),'Content-Type':'application/json'},body:{mode:'raw',raw:JSON.stringify({token:pm.response.json().token})}},(err,res)=>{pm.test('Neon session ownership verified',()=>{pm.expect(err).to.eql(null);pm.expect(res.code).to.eql(200);});});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Repeat current user",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{sessionToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/me"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": []
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Current user', () => { const id=pm.response.json().user.id; const previous=pm.collectionVariables.get('userId'); if(previous) pm.expect(id).to.eql(previous); pm.collectionVariables.set('userId',id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Existing email conflict",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/emailConflict', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 409', () => pm.response.to.have.status(409));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"ACCOUNT_LINKING_CONFLICT\",\"message\":\"Account linking required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cross-account conflict",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/google",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"idToken\":\"{{idToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.sendRequest({url: pm.collectionVariables.get('fixtureUrl') + '/credential/crossConflict', method:'POST', header:{Authorization:'Bearer ' + pm.collectionVariables.get('fixtureKey')}}, (err,res) => { if(err || res.code !== 200) throw new Error('Private credential unavailable'); pm.variables.set('idToken',res.json().idToken); });"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP 409', () => pm.response.to.have.status(409));",
+              "pm.test('No response caching', () => pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));",
+              "pm.test('Safe JSON error', () => pm.expect(pm.response.json()).to.eql({\"error\":{\"code\":\"ACCOUNT_LINKING_CONFLICT\",\"message\":\"Account linking required\"}}));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

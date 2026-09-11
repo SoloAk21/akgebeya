@@ -1,3 +1,6 @@
+import { GoogleVerifier } from './auth/google-verifier.js';
+import { GoogleAuthService } from './auth/google-service.js';
+import { PrismaGoogleRepository } from './auth/google-repository.js';
 import { TelegramVerifier } from './auth/telegram-verifier.js';
 import { TelegramAuthService } from './auth/telegram-service.js';
 import { PrismaTelegramRepository } from './auth/telegram-repository.js';
@@ -9,7 +12,7 @@ import { AuthService } from './auth/service.js';
 import { PrismaAuthRepository } from './auth/repository.js';
 import { createServer } from 'node:http';
 import { createApp } from './app.js';
-import { loadConfig, loadAuthConfig, loadTelegramConfig, loadPhoneOtpConfig } from './config.js';
+import { loadConfig, loadAuthConfig, loadTelegramConfig, loadPhoneOtpConfig, loadGoogleConfig } from './config.js';
 
 try {
   const config = loadConfig();
@@ -21,7 +24,8 @@ try {
   const auth = new AuthService(new PrismaAuthRepository(database), authConfig);
   const telegram = new TelegramAuthService(new TelegramVerifier(telegramConfig), new PrismaTelegramRepository(database), auth);
   const phone = new PhoneOtpService(new PrismaPhoneOtpRepository(database), phoneTransport, phoneConfig, authConfig);
-  const server = createServer(createApp(config, auth, telegram, phone));
+  const google = new GoogleAuthService(new GoogleVerifier(loadGoogleConfig()), new PrismaGoogleRepository(database), authConfig);
+  const server = createServer(createApp(config, auth, telegram, phone, google));
   server.listen(config.port, config.host, () => {
     console.log(`Backend listening at http://${config.host}:${config.port}${config.apiPrefix}`);
   });
