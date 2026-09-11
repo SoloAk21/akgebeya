@@ -132,3 +132,15 @@ export function parseGoogleConfig(environment: NodeJS.ProcessEnv) {
 }
 export type GoogleConfig = ReturnType<typeof parseGoogleConfig>;
 export function loadGoogleConfig(): GoogleConfig { loadEnvironment(); return parseGoogleConfig(process.env); }
+
+const providerEnvironmentSchema = z.object({
+  PROVIDER_PENDING_TTL_SECONDS: z.coerce.number().int().min(60).max(2_592_000).default(604_800),
+  PROVIDER_APPROVAL_TTL_SECONDS: z.coerce.number().int().min(60).max(31_536_000).default(7_776_000),
+});
+export function parseProviderConfig(environment: NodeJS.ProcessEnv) {
+  const result = providerEnvironmentSchema.safeParse(environment);
+  if (!result.success) throw new Error('Invalid provider verification configuration');
+  return { pendingTtlSeconds: result.data.PROVIDER_PENDING_TTL_SECONDS, approvalTtlSeconds: result.data.PROVIDER_APPROVAL_TTL_SECONDS };
+}
+export type ProviderConfig = ReturnType<typeof parseProviderConfig>;
+export function loadProviderConfig(): ProviderConfig { loadEnvironment(); return parseProviderConfig(process.env); }

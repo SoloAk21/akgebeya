@@ -22,6 +22,14 @@ enum UserStatus {
   DEACTIVATED
 }
 
+enum ProviderRole {
+  OWNER
+  BROKER
+  AGENT
+  AGENCY
+  DEVELOPER
+}
+
 enum ProviderStatus {
   PENDING
   ACTIVE
@@ -66,6 +74,7 @@ enum PaymentStatus {
 }
 
 enum VerificationType {
+  PROVIDER
   EMAIL
   PHONE
   IDENTITY
@@ -136,6 +145,7 @@ model User {
 model Provider {
   id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId        String         @unique @db.Uuid
+  role          ProviderRole?
   nameEn        String         @db.VarChar(160)
   nameAm        String?        @db.VarChar(160)
   descriptionEn String?        @db.Text

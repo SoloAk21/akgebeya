@@ -142,3 +142,9 @@ The new migration adds nullable unique User.googleSub (VARCHAR(255)) and rejects
 blank/whitespace-only subjects. The existing identity CHECK and all other models
 remain unchanged. There are now 47 indexes and 32 CHECK constraints.
 See [Google authentication](GOOGLE_AUTH.md) for verification and account conflicts.
+
+## Provider verification (Step 4.5)
+
+Provider profiles, review requests, ADMIN decisions and provider authorization are
+documented in [Provider verification](PROVIDER_VERIFICATION.md).
+The new migration preserves legacy null roles and existing authentication data.

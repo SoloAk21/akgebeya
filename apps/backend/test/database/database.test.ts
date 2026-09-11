@@ -50,14 +50,14 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
     JOIN pg_class t ON t.oid = i.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'akgebeya' AND t.relname <> '_prisma_migrations'
   `;
-  assert.equal(indexes[0]?.count, 47);
+  assert.equal(indexes[0]?.count, 48);
   assert.equal(indexes[0]?.all_valid, true);
   const checks = await database.$queryRaw<{ count: number; all_valid: boolean }[]>`
     SELECT count(*)::int AS count, bool_and(c.convalidated) AS all_valid
     FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = 'akgebeya' AND c.contype = 'c'
   `;
-  assert.equal(checks[0]?.count, 32);
+  assert.equal(checks[0]?.count, 33);
   assert.equal(checks[0]?.all_valid, true);
 });
 

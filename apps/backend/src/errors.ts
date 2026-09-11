@@ -1,6 +1,8 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  PROVIDER_CONFLICT: { status: 409, message: 'Provider state conflicts with this request' },
+  PROVIDER_NOT_FOUND: { status: 404, message: 'Provider profile not found' },
   ACCOUNT_LINKING_CONFLICT: { status: 409, message: 'Account linking required' },
   UNAUTHORIZED: { status: 401, message: 'Authentication required' },
   FORBIDDEN: { status: 403, message: 'Access denied' },

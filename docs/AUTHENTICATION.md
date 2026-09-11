@@ -244,3 +244,9 @@ The existing session, current-user, logout, RBAC and Telegram flows are reused.
 POST /api/v1/auth/google verifies Google ID tokens and reuses database-backed sessions.
 See [Google authentication](GOOGLE_AUTH.md) for identity conflicts, configuration,
 exact curl/Postman checks and the required real-Google development verification.
+
+## Provider verification (Step 4.5)
+
+Provider profiles, review requests, ADMIN decisions and provider authorization are
+documented in [Provider verification](PROVIDER_VERIFICATION.md).
+The new migration preserves legacy null roles and existing authentication data.

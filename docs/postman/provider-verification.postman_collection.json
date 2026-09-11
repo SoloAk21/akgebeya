@@ -1,0 +1,908 @@
+{
+  "info": {
+    "name": "AkGebeya Step 4.5 Provider Verification",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Development-only sequential collection. Start scripts/verify-provider.ts. Never sync or export populated credentials."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1"
+    },
+    {
+      "key": "fixtureUrl",
+      "value": ""
+    },
+    {
+      "key": "fixtureKey",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.variables.get('ownerToken')) {",
+          "pm.sendRequest({url: pm.variables.get('fixtureUrl') + '/credentials', method:'POST', header:{Authorization:'Bearer ' + pm.variables.get('fixtureKey')}}, function(error, response) {",
+          "if (error || response.code !== 200) throw new Error('Private development fixture unavailable');",
+          "const tokens = response.json();",
+          "['owner','other','admin'].forEach(actor => pm.variables.set(actor + 'Token', tokens[actor]));",
+          "});",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Unauthenticated creation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"OWNER\",\"nameEn\":\"Provider fixture\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Authentication required\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(401));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invalid provider role",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"ADMIN\",\"nameEn\":\"Provider fixture\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(400));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create provider",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"OWNER\",\"nameEn\":\"Provider fixture\",\"nameAm\":\"????\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON (placeholders denote generated values):{\n  \"provider\": {\n    \"id\": \"<provider-uuid>\",\n    \"role\": \"OWNER\",\n    \"nameEn\": \"<English name>\",\n    \"nameAm\": \"<Amharic name or null>\",\n    \"descriptionEn\": null,\n    \"descriptionAm\": null,\n    \"status\": \"PENDING\",\n    \"verification\": {\n      \"id\": null,\n      \"state\": \"UNVERIFIED\",\n      \"verified\": false,\n      \"reviewedAt\": null,\n      \"expiresAt\": null\n    }\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('UNVERIFIED'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });",
+              "pm.variables.set('providerId', body.provider.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Duplicate provider",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"OWNER\",\"nameEn\":\"Provider fixture\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 409. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"PROVIDER_CONFLICT\",\n    \"message\": \"Provider state conflicts with this request\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(409));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"PROVIDER_CONFLICT\",\"message\":\"Provider state conflicts with this request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get own provider",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me",
+        "description": "Expected HTTP 200. Expected JSON (placeholders denote generated values):{\n  \"provider\": {\n    \"id\": \"<provider-uuid>\",\n    \"role\": \"OWNER\",\n    \"nameEn\": \"<English name>\",\n    \"nameAm\": \"<Amharic name or null>\",\n    \"descriptionEn\": null,\n    \"descriptionAm\": null,\n    \"status\": \"PENDING\",\n    \"verification\": {\n      \"id\": null,\n      \"state\": \"UNVERIFIED\",\n      \"verified\": false,\n      \"reviewedAt\": null,\n      \"expiresAt\": null\n    }\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('UNVERIFIED'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Submit verification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"PENDING\",\n    \"verified\": false,\n    \"reviewedAt\": null,\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('PENDING'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });",
+              "pm.variables.set('verificationId', body.verification.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Duplicate pending submission",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 409. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"PROVIDER_CONFLICT\",\n    \"message\": \"Provider state conflicts with this request\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(409));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"PROVIDER_CONFLICT\",\"message\":\"Provider state conflicts with this request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get pending status",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "description": "Expected HTTP 200. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"PENDING\",\n    \"verified\": false,\n    \"reviewedAt\": null,\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('PENDING'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "USER cannot approve",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{providerId}}/verification/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{verificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(403));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "USER cannot reject",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{providerId}}/verification/reject",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{verificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(403));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject injected ownership",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"providerId\":\"{{providerId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(400));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN approval",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{providerId}}/verification/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{verificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"VERIFIED\",\n    \"verified\": true,\n    \"reviewedAt\": \"<UTC timestamp>\",\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('VERIFIED'); pm.expect(v.verified).to.equal(true); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Verified provider state",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me",
+        "description": "Expected HTTP 200. Expected JSON (placeholders denote generated values):{\n  \"provider\": {\n    \"id\": \"<provider-uuid>\",\n    \"role\": \"OWNER\",\n    \"nameEn\": \"<English name>\",\n    \"nameAm\": \"<Amharic name or null>\",\n    \"descriptionEn\": null,\n    \"descriptionAm\": null,\n    \"status\": \"ACTIVE\",\n    \"verification\": {\n      \"id\": \"<verification-uuid>\",\n      \"state\": \"VERIFIED\",\n      \"verified\": true,\n      \"reviewedAt\": \"<UTC timestamp>\",\n      \"expiresAt\": \"<UTC timestamp>\"\n    }\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('VERIFIED'); pm.expect(v.verified).to.equal(true); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Repeated decision",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{providerId}}/verification/reject",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{verificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 409. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"PROVIDER_CONFLICT\",\n    \"message\": \"Provider state conflicts with this request\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(409));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"PROVIDER_CONFLICT\",\"message\":\"Provider state conflicts with this request\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create second provider",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"BROKER\",\"nameEn\":\"Second provider fixture\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON (placeholders denote generated values):{\n  \"provider\": {\n    \"id\": \"<provider-uuid>\",\n    \"role\": \"BROKER\",\n    \"nameEn\": \"<English name>\",\n    \"nameAm\": \"<Amharic name or null>\",\n    \"descriptionEn\": null,\n    \"descriptionAm\": null,\n    \"status\": \"PENDING\",\n    \"verification\": {\n      \"id\": null,\n      \"state\": \"UNVERIFIED\",\n      \"verified\": false,\n      \"reviewedAt\": null,\n      \"expiresAt\": null\n    }\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('UNVERIFIED'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });",
+              "pm.variables.set('otherProviderId', body.provider.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Submit second verification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"PENDING\",\n    \"verified\": false,\n    \"reviewedAt\": null,\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('PENDING'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });",
+              "pm.variables.set('otherVerificationId', body.verification.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN rejection",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{otherProviderId}}/verification/reject",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{otherVerificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"REJECTED\",\n    \"verified\": false,\n    \"reviewedAt\": \"<UTC timestamp>\",\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('REJECTED'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rejected provider state",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "description": "Expected HTTP 200. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"REJECTED\",\n    \"verified\": false,\n    \"reviewedAt\": \"<UTC timestamp>\",\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('REJECTED'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN own provider",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"role\":\"DEVELOPER\",\"nameEn\":\"Admin own fixture\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON (placeholders denote generated values):{\n  \"provider\": {\n    \"id\": \"<provider-uuid>\",\n    \"role\": \"DEVELOPER\",\n    \"nameEn\": \"<English name>\",\n    \"nameAm\": \"<Amharic name or null>\",\n    \"descriptionEn\": null,\n    \"descriptionAm\": null,\n    \"status\": \"PENDING\",\n    \"verification\": {\n      \"id\": null,\n      \"state\": \"UNVERIFIED\",\n      \"verified\": false,\n      \"reviewedAt\": null,\n      \"expiresAt\": null\n    }\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('UNVERIFIED'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });",
+              "pm.variables.set('adminProviderId', body.provider.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN own submission",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/providers/me/verification",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON (placeholders denote generated values):{\n  \"verification\": {\n    \"id\": \"<verification-uuid>\",\n    \"state\": \"PENDING\",\n    \"verified\": false,\n    \"reviewedAt\": null,\n    \"expiresAt\": \"<UTC timestamp>\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test('Server-derived state', () => { const v = body.verification || body.provider.verification; pm.expect(v.state).to.equal('PENDING'); pm.expect(v.verified).to.equal(false); pm.expect(v).not.to.have.property('reviewerId'); pm.expect(v).not.to.have.property('tokenHash'); });",
+              "pm.variables.set('adminVerificationId', body.verification.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN cannot self approve",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{adminProviderId}}/verification/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{adminVerificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(403));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "ADMIN cannot self reject",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/admin/providers/{{adminProviderId}}/verification/reject",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"verificationId\":\"{{adminVerificationId}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403. Expected JSON (placeholders denote generated values):{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status', () => pm.response.to.have.status(403));",
+              "const body = pm.response.json();",
+              "pm.test('Safe error', () => pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -91,3 +91,9 @@ node --import tsx apps/backend/scripts/verify-phone.ts
 POST /api/v1/auth/google verifies Google ID tokens and issues existing database-backed
 sessions. Email conflicts require a later explicit account-linking flow.
 See [Google setup and curl/Postman/real-login verification](docs/GOOGLE_AUTH.md).
+
+## Provider verification (Step 4.5)
+
+Provider profiles, review requests, ADMIN decisions and provider authorization are
+documented in [Provider verification](docs/PROVIDER_VERIFICATION.md).
+The new migration preserves legacy null roles and existing authentication data.
