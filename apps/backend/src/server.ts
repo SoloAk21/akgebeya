@@ -1,21 +1,27 @@
 import { TelegramVerifier } from './auth/telegram-verifier.js';
 import { TelegramAuthService } from './auth/telegram-service.js';
 import { PrismaTelegramRepository } from './auth/telegram-repository.js';
+import { PhoneOtpService } from './auth/phone-service.js';
+import { PrismaPhoneOtpRepository } from './auth/phone-repository.js';
+import { createOtpTransport } from './auth/phone-transport.js';
 import { createDatabaseClient } from './database.js';
 import { AuthService } from './auth/service.js';
 import { PrismaAuthRepository } from './auth/repository.js';
 import { createServer } from 'node:http';
 import { createApp } from './app.js';
-import { loadConfig, loadAuthConfig, loadTelegramConfig } from './config.js';
+import { loadConfig, loadAuthConfig, loadTelegramConfig, loadPhoneOtpConfig } from './config.js';
 
 try {
   const config = loadConfig();
   const authConfig = loadAuthConfig();
   const telegramConfig = loadTelegramConfig();
+  const phoneConfig = loadPhoneOtpConfig();
+  const phoneTransport = createOtpTransport(phoneConfig);
   const database = createDatabaseClient('pooled');
   const auth = new AuthService(new PrismaAuthRepository(database), authConfig);
   const telegram = new TelegramAuthService(new TelegramVerifier(telegramConfig), new PrismaTelegramRepository(database), auth);
-  const server = createServer(createApp(config, auth, telegram));
+  const phone = new PhoneOtpService(new PrismaPhoneOtpRepository(database), phoneTransport, phoneConfig, authConfig);
+  const server = createServer(createApp(config, auth, telegram, phone));
   server.listen(config.port, config.host, () => {
     console.log(`Backend listening at http://${config.host}:${config.port}${config.apiPrefix}`);
   });

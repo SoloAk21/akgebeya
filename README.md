@@ -61,7 +61,7 @@ npm run test:database --workspace apps/backend
 ```
 
 The health check does not query the database. Payment logic, listing services,
-frontend/bot code, phone OTP, and Google OAuth are not implemented.
+frontend/bot code and Google OAuth are not implemented.
 
 ## Authentication (Steps 4.1–4.2)
 
@@ -74,3 +74,14 @@ Session-row verification using a temporary development fixture.
 The workspace paths are `apps/frontend`, `apps/backend`, `apps/bot`, and
 `packages/shared`. Engineering rules are in `AGENTS.md`; project documentation
 is in `docs/`, including `docs/ROADMAP.md`.
+
+## Phone OTP (Step 4.3)
+
+Phone OTP request/verify endpoints reuse the database-backed session service.
+No SMS provider is implemented; phone authentication defaults to unavailable.
+See [Phone OTP setup and manual curl/Postman verification](docs/PHONE_OTP.md).
+
+```sh
+npm run build --workspace apps/backend
+node --import tsx apps/backend/scripts/verify-phone.ts
+```

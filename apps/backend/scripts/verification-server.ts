@@ -5,7 +5,7 @@ import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 // Shared by manual verifiers; child diagnostics and credentials stay private.
-export async function withBuiltServer(environment: NodeJS.ProcessEnv, run: (base: string) => Promise<void>) {
+export async function withBuiltServer(environment: NodeJS.ProcessEnv, run: (base: string) => Promise<void>, onMessage?: (message: unknown) => void) {
   const reservation = createServer();
   reservation.listen(0, '127.0.0.1');
   await once(reservation, 'listening');
@@ -15,8 +15,9 @@ export async function withBuiltServer(environment: NodeJS.ProcessEnv, run: (base
   await new Promise<void>((resolve, reject) => reservation.close(error => error ? reject(error) : resolve()));
   const server = spawn(process.execPath, [fileURLToPath(new URL('../dist/server.js', import.meta.url))], {
     cwd: fileURLToPath(new URL('..', import.meta.url)), windowsHide: true,
-    env: { ...process.env, ...environment, HOST: '127.0.0.1', PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ...environment, HOST: '127.0.0.1', PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
+  if (onMessage) server.on('message', onMessage);
   const closed = new Promise<void>(resolve => server.once('close', () => resolve()));
   try {
     await new Promise<void>((resolve, reject) => {

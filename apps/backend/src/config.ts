@@ -83,3 +83,43 @@ export function loadTelegramConfig(): TelegramConfig {
   loadEnvironment();
   return parseTelegramConfig(process.env);
 }
+
+const phoneOtpEnvironmentSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PHONE_OTP_TRANSPORT: z.enum(['disabled', 'test-ipc']).default('disabled'),
+  PHONE_OTP_HASH_SECRET: z.string().optional(),
+  PHONE_OTP_TTL_SECONDS: z.coerce.number().int().min(30).max(600).default(300),
+  PHONE_OTP_COOLDOWN_SECONDS: z.coerce.number().int().min(10).max(300).default(60),
+  PHONE_OTP_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(5),
+}).superRefine((value, context) => {
+  if (value.PHONE_OTP_COOLDOWN_SECONDS > value.PHONE_OTP_TTL_SECONDS) {
+    context.addIssue({ code: 'custom', path: ['PHONE_OTP_COOLDOWN_SECONDS'], message: 'Cooldown exceeds TTL' });
+  }
+  if (value.PHONE_OTP_TRANSPORT === 'test-ipc') {
+    if (value.NODE_ENV === 'production') {
+      context.addIssue({ code: 'custom', path: ['PHONE_OTP_TRANSPORT'], message: 'Test transport forbidden in production' });
+    }
+    const key = value.PHONE_OTP_HASH_SECRET ?? '';
+    if (!/^[A-Za-z0-9_-]{43,172}$/.test(key) || Buffer.from(key, 'base64url').length < 32
+      || Buffer.from(key, 'base64url').toString('base64url') !== key) {
+      context.addIssue({ code: 'custom', path: ['PHONE_OTP_HASH_SECRET'], message: 'Invalid hash secret' });
+    }
+  }
+});
+export function parsePhoneOtpConfig(environment: NodeJS.ProcessEnv) {
+  const result = phoneOtpEnvironmentSchema.safeParse(environment);
+  if (!result.success) {
+    const fields = [...new Set(result.error.issues.map(issue => issue.path[0]))];
+    throw new Error('Invalid phone OTP configuration: ' + fields.join(', '));
+  }
+  const value = result.data;
+  return { transport: value.PHONE_OTP_TRANSPORT,
+    secret: value.PHONE_OTP_TRANSPORT === 'disabled' ? undefined : new Uint8Array(Buffer.from(value.PHONE_OTP_HASH_SECRET!, 'base64url')),
+    ttlSeconds: value.PHONE_OTP_TTL_SECONDS, cooldownSeconds: value.PHONE_OTP_COOLDOWN_SECONDS,
+    maxAttempts: value.PHONE_OTP_MAX_ATTEMPTS };
+}
+export type PhoneOtpConfig = ReturnType<typeof parsePhoneOtpConfig>;
+export function loadPhoneOtpConfig(): PhoneOtpConfig {
+  loadEnvironment();
+  return parsePhoneOtpConfig(process.env);
+}

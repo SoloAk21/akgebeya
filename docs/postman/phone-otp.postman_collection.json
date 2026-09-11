@@ -1,0 +1,566 @@
+{
+  "info": {
+    "name": "AkGebeya Step 4.3 Phone OTP — local verification",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run only with scripts/verify-phone.ts. OTPs remain in memory in a private development fixture. No production OTP-disclosure endpoint or real SMS provider exists. Each request documents exact expected status."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1/auth"
+    },
+    {
+      "key": "fixtureUrl",
+      "value": ""
+    },
+    {
+      "key": "fixtureKey",
+      "value": ""
+    },
+    {
+      "key": "phone",
+      "value": ""
+    },
+    {
+      "key": "challengeId",
+      "value": ""
+    },
+    {
+      "key": "otpValue",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "function fixture(action, extra, done) {",
+          "  pm.sendRequest({ url: pm.collectionVariables.get('fixtureUrl') + '/' + action, method: 'POST',",
+          "    header: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pm.collectionVariables.get('fixtureKey') },",
+          "    body: { mode: 'raw', raw: JSON.stringify(Object.assign({ phone: pm.collectionVariables.get('phone') }, extra)) } },",
+          "    function(error, response) {",
+          "      if (error || !response || response.code !== 200) throw new Error('Development fixture failed');",
+          "      done(response.json());",
+          "    });",
+          "}",
+          "const name = pm.info.requestName;",
+          "if (['Repeat OTP request','Expiry OTP request','Attempt-limit OTP request'].includes(name)) {",
+          "  fixture('allow-resend', {}, function() {});",
+          "}",
+          "if (name.startsWith('Wrong OTP') || ['Correct OTP','Repeat OTP verification','Expired OTP','Exhausted OTP'].includes(name)) {",
+          "  fixture('delivery', { challengeId: pm.collectionVariables.get('challengeId') }, function(body) {",
+          "    const code = body.otp;",
+          "    pm.collectionVariables.set('otpValue', name.startsWith('Wrong OTP') ? String((Number(code[0]) + 1) % 10) + code.slice(1) : code);",
+          "    if (name === 'Expired OTP') fixture('expire', {}, function() {});",
+          "  });",
+          "}",
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "function fixture(action, extra, done) {",
+          "  pm.sendRequest({ url: pm.collectionVariables.get('fixtureUrl') + '/' + action, method: 'POST',",
+          "    header: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pm.collectionVariables.get('fixtureKey') },",
+          "    body: { mode: 'raw', raw: JSON.stringify(Object.assign({ phone: pm.collectionVariables.get('phone') }, extra)) } },",
+          "    function(error, response) {",
+          "      if (error || !response || response.code !== 200) throw new Error('Development fixture failed');",
+          "      done(response.json());",
+          "    });",
+          "}",
+          "const expected = {\"Invalid phone\":400,\"Request OTP\":200,\"Resend cooldown\":429,\"Wrong OTP\":401,\"Correct OTP\":200,\"Current user\":200,\"Reused OTP\":401,\"Logout\":200,\"Current user after logout\":401,\"Current user without token\":401,\"Repeat OTP request\":200,\"Repeat OTP verification\":200,\"Expiry OTP request\":200,\"Expired OTP\":401,\"Attempt-limit OTP request\":200,\"Wrong OTP attempt 1\":401,\"Wrong OTP attempt 2\":401,\"Wrong OTP attempt 3\":401,\"Wrong OTP attempt 4\":401,\"Wrong OTP attempt 5\":401,\"Exhausted OTP\":401};",
+          "const name = pm.info.requestName;",
+          "pm.test('Expected HTTP status', function() { pm.response.to.have.status(expected[name]); });",
+          "const body = pm.response.json();",
+          "if (expected[name] >= 400) {",
+          "  const code = expected[name] === 400 ? 'BAD_REQUEST' : expected[name] === 429 ? 'TOO_MANY_REQUESTS' : 'UNAUTHORIZED';",
+          "  pm.test('Safe JSON error', function() { pm.expect(body.error.code).to.equal(code); });",
+          "}",
+          "if (name.endsWith('OTP request') || name === 'Request OTP') {",
+          "  pm.test('Challenge metadata only', function() {",
+          "    pm.expect(Object.keys(body).sort().join(',')).to.equal('challengeId,expiresAt,resendAvailableAt');",
+          "  });",
+          "  pm.collectionVariables.set('challengeId', body.challengeId);",
+          "}",
+          "if (name === 'Correct OTP' || name === 'Repeat OTP verification') {",
+          "  pm.test('Session response only', function() {",
+          "    pm.expect(Object.keys(body).sort().join(',')).to.equal('expiresAt,token');",
+          "    pm.expect(typeof body.token).to.equal('string');",
+          "  });",
+          "  pm.collectionVariables.set('token', body.token);",
+          "  fixture('session', { token: body.token, expiresAt: body.expiresAt }, function(result) {",
+          "    pm.test('Neon OTP/session hashes and user identity verified', function() { pm.expect(result.status).to.equal('ok'); });",
+          "  });",
+          "}",
+          "if (name === 'Current user') {",
+          "  pm.test('Current verified phone and role', function() {",
+          "    pm.expect(body.user.phone).to.equal(pm.collectionVariables.get('phone'));",
+          "    pm.expect(body.user.role).to.equal('USER');",
+          "  });",
+          "}",
+          "if (name === 'Logout') fixture('revoked', { token: pm.collectionVariables.get('token') }, function(result) {",
+          "  pm.test('Neon session revoked', function() { pm.expect(result.status).to.equal('ok'); });",
+          "});",
+          "if (name === 'Exhausted OTP') fixture('exhausted', {}, function(result) {",
+          "  pm.test('Atomic attempt limit persisted', function() { pm.expect(result.status).to.equal('ok'); });",
+          "});",
+          ""
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Invalid phone",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/request-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"invalid\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Request OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/request-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Resend cooldown",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/request-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 429; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Wrong OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Correct OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Current user",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/me",
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Reused OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/logout",
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Current user after logout",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": "{{baseUrl}}/me",
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Current user without token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/me",
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Repeat OTP request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/request-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Repeat OTP verification",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Expiry OTP request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/request-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Expired OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Attempt-limit OTP request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/request-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Wrong OTP attempt 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Wrong OTP attempt 2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Wrong OTP attempt 3",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Wrong OTP attempt 4",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Wrong OTP attempt 5",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    },
+    {
+      "name": "Exhausted OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/phone/verify-otp",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"phone\":\"{{phone}}\",\"challengeId\":\"{{challengeId}}\",\"otp\":\"{{otpValue}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; see docs/PHONE_OTP.md for exact JSON."
+      }
+    }
+  ]
+}

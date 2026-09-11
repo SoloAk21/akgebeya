@@ -127,3 +127,11 @@ Existing contact identifiers, relations and the original migration are unchanged
 There are now 42 application indexes and still 24 CHECK constraints.
 See [Telegram authentication](AUTHENTICATION.md#telegram-authentication-step-42)
 for identity mapping, configuration and verification.
+
+## Phone OTP migration (Step 4.3)
+
+The new PhoneOtp table has a unique normalized phone, keyed OTP hash, expiration,
+resend cooldown, failed-attempt counter and consumption/revocation timestamps.
+It adds four indexes and seven checks: the application schema now has eleven
+tables, 46 indexes and 31 CHECK constraints. Existing models and applied migrations
+are unchanged. See [Phone OTP](PHONE_OTP.md) for atomicity and verification.

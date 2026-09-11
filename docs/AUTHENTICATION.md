@@ -232,3 +232,9 @@ Missing/wrong request fields: HTTP **400**,
 Invalid JSON uses the existing **400 INVALID_JSON** error; oversized bodies use
 **413 PAYLOAD_TOO_LARGE**. Unexpected database failures use the generic **500**
 response and never print initData, hashes, tokens, or database details.
+
+## Phone OTP authentication (Step 4.3)
+
+Phone OTP request/verify endpoints, the private development transport, constraints,
+and exact curl/Postman/Neon manual checks are documented in [Phone OTP](PHONE_OTP.md).
+The existing session, current-user, logout, RBAC and Telegram flows are reused.

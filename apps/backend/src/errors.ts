@@ -3,6 +3,8 @@ import type { ErrorRequestHandler, RequestHandler } from 'express';
 const safeErrors = {
   UNAUTHORIZED: { status: 401, message: 'Authentication required' },
   FORBIDDEN: { status: 403, message: 'Access denied' },
+  TOO_MANY_REQUESTS: { status: 429, message: 'Please try again later' },
+  SERVICE_UNAVAILABLE: { status: 503, message: 'Service unavailable' },
   BAD_REQUEST: { status: 400, message: 'Invalid request' },
 } as const;
 

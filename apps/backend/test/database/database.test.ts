@@ -6,9 +6,9 @@ import { Prisma } from '../../src/generated/prisma/client.js';
 
 const database = createDatabaseClient();
 after(async () => { await database.$disconnect(); });
-const tables = ['users', 'providers', 'listings', 'locations', 'payments', 'sessions', 'verifications', 'media', 'referrals', 'notifications'];
+const tables = ['users', 'providers', 'listings', 'locations', 'payments', 'sessions', 'verifications', 'media', 'referrals', 'notifications', 'phone_otps'];
 
-test('Neon contains all ten tables, UUID primary keys, timezone timestamps, foreign keys, indexes, and checks', async () => {
+test('Neon contains all application tables, UUID primary keys, timezone timestamps, foreign keys, indexes, and checks', async () => {
   const schema = await database.$queryRaw<{ schema: string }[]>`SELECT to_regnamespace('akgebeya')::text AS schema`;
   assert.equal(schema[0]?.schema, 'akgebeya', 'Database tests must target the isolated application schema');
   const actualTables = await database.$queryRaw<{ tablename: string }[]>`
@@ -50,14 +50,14 @@ test('Neon contains all ten tables, UUID primary keys, timezone timestamps, fore
     JOIN pg_class t ON t.oid = i.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'akgebeya' AND t.relname <> '_prisma_migrations'
   `;
-  assert.equal(indexes[0]?.count, 42);
+  assert.equal(indexes[0]?.count, 46);
   assert.equal(indexes[0]?.all_valid, true);
   const checks = await database.$queryRaw<{ count: number; all_valid: boolean }[]>`
     SELECT count(*)::int AS count, bool_and(c.convalidated) AS all_valid
     FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = 'akgebeya' AND c.contype = 'c'
   `;
-  assert.equal(checks[0]?.count, 24);
+  assert.equal(checks[0]?.count, 31);
   assert.equal(checks[0]?.all_valid, true);
 });
 

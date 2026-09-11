@@ -332,3 +332,20 @@ model Notification {
   @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
+
+model PhoneOtp {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone             String    @unique @db.VarChar(16)
+  otpHash           String    @db.Char(64)
+  expiresAt         DateTime  @db.Timestamptz(6)
+  resendAvailableAt DateTime  @db.Timestamptz(6)
+  attemptCount      Int       @default(0)
+  consumedAt        DateTime? @db.Timestamptz(6)
+  revokedAt         DateTime? @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@index([consumedAt, revokedAt, expiresAt])
+  @@map("phone_otps")
+}
