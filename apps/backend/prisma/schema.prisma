@@ -37,6 +37,8 @@ enum ProviderStatus {
 }
 
 enum ListingStatus {
+  COMPLETE
+  VALIDATE
   DRAFT
   PUBLISHED
   PAUSED

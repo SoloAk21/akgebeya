@@ -21,5 +21,9 @@ export function listingController(service:ListingService){
  const get:RequestHandler=async(req,res)=>{validate(req,empty.optional(),idParams);reply(res,await service.get(authenticatedContext(req),String(req.params.listingId)));};
  const update:RequestHandler=async(req,res)=>{validate(req,draftInput,idParams,empty,true);reply(res,await service.update(authenticatedContext(req),String(req.params.listingId),req.body,match(req)));};
  const remove:RequestHandler=async(req,res)=>{validate(req,empty.optional(),idParams);await service.update(authenticatedContext(req),String(req.params.listingId),{},match(req),true);res.json({status:'ok'});};
- return {create,mine,get,update,remove};
+ const transition=(target:'COMPLETE'|'VALIDATE'):RequestHandler=>async(req,res)=>{
+  validate(req,empty,idParams,empty,true);
+  reply(res,await service.transition(authenticatedContext(req),String(req.params.listingId),target,match(req)));
+ };
+ return {create,mine,get,update,remove,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
 }

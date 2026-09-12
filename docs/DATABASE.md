@@ -159,3 +159,10 @@ safety are enforced by CHECK constraints. All existing indexes/FKs remain.
 There are 48 application indexes and 36 CHECK constraints.
 See [Listing drafts](LISTING_DRAFTS.md) for the exact taxonomy, concurrency contract,
 preservation checks and rollback-isolated live database tests.
+
+## Listing completion migration (Step 4.7)
+
+One new migration adds COMPLETE/VALIDATE and requires unpublished DRAFT, COMPLETE
+and VALIDATE rows. Existing statuses, columns, defaults, indexes, foreign keys,
+rows and the PUBLISHED constraint are preserved. Counts remain 48 indexes and
+36 CHECK constraints. See [Listing completion](LISTING_COMPLETION.md).

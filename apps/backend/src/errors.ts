@@ -1,6 +1,8 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  LISTING_INCOMPLETE: { status: 422, message: 'Listing information is incomplete or invalid' },
+  LISTING_TRANSITION_CONFLICT: { status: 409, message: 'Listing cannot make this transition' },
   LISTING_NOT_FOUND: { status: 404, message: 'Listing not found' },
   LISTING_CONFLICT: { status: 409, message: 'Listing is not an editable draft' },
   PRECONDITION_REQUIRED: { status: 428, message: 'If-Match is required' },
@@ -23,6 +25,16 @@ export class HttpError extends Error {
   }
 }
 
+const listingValidationFields=['category','type','propertyType','titleEn','titleAm','descriptionEn','descriptionAm','locationId','price','currency','bedrooms','bathrooms','areaSqm'] as const;
+export type ListingValidationField=typeof listingValidationFields[number];
+export class ListingIncompleteError extends HttpError {
+  readonly fields:readonly ListingValidationField[];
+  constructor(fields:readonly ListingValidationField[]){
+    super('LISTING_INCOMPLETE');
+    this.fields=[...new Set(fields.filter(field=>listingValidationFields.includes(field)))];
+  }
+}
+
 export const notFound: RequestHandler = (_request, response) => {
   response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
 };
@@ -35,7 +47,7 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
 
   if (error instanceof HttpError) {
     if (error.status === 401) response.set('WWW-Authenticate', 'Bearer');
-    response.status(error.status).json({ error: { code: error.code, message: error.message } });
+    response.status(error.status).json({ error: { code: error.code, message: error.message, ...(error instanceof ListingIncompleteError ? { fields: error.fields } : {}) } });
     return;
   }
 

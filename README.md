@@ -103,3 +103,8 @@ The new migration preserves legacy null roles and existing authentication data.
 Verified active providers can create, read, update and soft-delete private drafts.
 Partial fields remain NULL, and updates require an ETag to prevent lost edits.
 See [Listing drafts, curl/Postman and Neon verification](docs/LISTING_DRAFTS.md).
+
+## Listing completion and validation (Step 4.7)
+
+Explicit complete/validate actions enforce required fields, provider ownership and
+ETag concurrency. See [Listing lifecycle and manual verification](docs/LISTING_COMPLETION.md).

@@ -1,27 +1,11 @@
+import { privateListingCommand,runListingPostman } from './private-listing-command.js';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { randomBytes,randomUUID,timingSafeEqual } from 'node:crypto';
-import { readFile,writeFile,unlink } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import express from 'express';
 import { z } from 'zod';
 import { loadConfig,loadAuthConfig } from '../src/config.js';
 import { withBuiltServer } from './verification-server.js';
-import { withServer } from '../test/helpers.js';
 import { withListingDatabaseFixture } from '../test/listing-database-fixture.js';
 import { listingScenarios } from './listing-scenarios.js';
 let stage='configuration';let httpStatus:number|undefined;
-const root=fileURLToPath(new URL('../../../',import.meta.url));
-async function command(executable:string,args:string[],input=''){
- return new Promise<string>((resolve,reject)=>{
-  const env=Object.fromEntries(Object.entries(process.env).filter(([k])=>/^(PATH|PATHEXT|SYSTEMROOT|WINDIR|TEMP|TMP|USERPROFILE|APPDATA|LOCALAPPDATA|COMSPEC|PROGRAMFILES|PROGRAMFILES\(X86\))$/i.test(k)));
-  const child=spawn(executable,args,{env,windowsHide:true,stdio:['pipe','pipe','pipe']});let output='';
-  child.stdout.on('data',part=>{output+=String(part);});child.stderr.on('data',()=>{});
-  child.once('error',()=>reject(new Error('LOCAL_COMMAND_FAILED')));
-  child.once('close',code=>code===0?resolve(output):reject(new Error('LOCAL_COMMAND_FAILED')));
-  child.stdin.on('error',()=>{});child.stdin.end(input);
- });
-}
 async function main(){
  if(loadConfig().nodeEnv==='production')throw new Error('DEVELOPMENT_ONLY');
  const config=loadAuthConfig();
@@ -38,7 +22,7 @@ async function main(){
       if(scenario.actor)lines.push('header = '+JSON.stringify('Authorization: Bearer '+actors[scenario.actor].token));
       if(scenario.match)lines.push('header = '+JSON.stringify('If-Match: '+replace(scenario.match)));
       if(scenario.body!==undefined)lines.push('data = '+JSON.stringify(JSON.stringify(scenario.body)));
-      const result=await command('curl.exe',['--silent','--show-error','--config','-','--write-out','\n%{http_code}',base+replace(scenario.path)],lines.join('\n'));
+      const result=await privateListingCommand('curl.exe',['--silent','--show-error','--config','-','--write-out','\n%{http_code}',base+replace(scenario.path)],lines.join('\n'));
       const split=result.lastIndexOf('\n');httpStatus=Number(result.slice(split+1));assert.equal(httpStatus,scenario.status);
       const body=JSON.parse(result.slice(0,split)) as {error?:{code:string};listing?:Record<string,unknown>;listings?:unknown[];status?:string};
       if(scenario.error)assert.equal(body.error?.code,scenario.error);
@@ -57,20 +41,7 @@ async function main(){
      console.log('PASS: curl listing drafts ('+listingScenarios.length+' requests), private access, RBAC and ETags.');
     }else{
      stage='Postman collection';httpStatus=undefined;
-     const key=randomBytes(32).toString('base64url'),fixture=express();
-     fixture.post('/credentials',(req,res)=>{
-      const actual=Buffer.from(req.headers.authorization??''),expected=Buffer.from('Bearer '+key);res.set('Cache-Control','no-store');
-      if(req.headers.origin||actual.length!==expected.length||!timingSafeEqual(actual,expected)){res.sendStatus(403);return;}
-      res.json({tokens:Object.fromEntries(Object.entries(actors).map(([name,a])=>[name,a.token])),nonDraftId});
-     });
-     await withServer(fixture,async fixtureUrl=>{
-      const collection=JSON.parse(await readFile(root+'docs/postman/listing-draft.postman_collection.json','utf8')) as {variable:{key:string;value:string}[]};
-      collection.variable=[{key:'baseUrl',value:base},{key:'fixtureUrl',value:fixtureUrl},{key:'fixtureKey',value:key}];
-      const temporary=root+'.git/listing-manual-'+randomUUID()+'.json';
-      try{await writeFile(temporary,JSON.stringify(collection),{flag:'wx'});
-       await command(process.execPath,[root+'node_modules/postman-cli/bin/postman.js','collection','run',temporary,'--no-report-events','--silent']);
-      }finally{await unlink(temporary);}
-     });
+     await runListingPostman('docs/postman/listing-draft.postman_collection.json',base,actors,nonDraftId);
      console.log('PASS: Postman listing drafts ('+listingScenarios.length+' requests), private access, RBAC and ETags.');
     }
     stage=mode+' Neon inspection';

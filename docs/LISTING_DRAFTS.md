@@ -8,7 +8,8 @@ publication, public listing API, search, uploads or other later lifecycle action
 Authentication and the existing verified-provider authorization protect these
 routes. The service rechecks ownership, role, current approval and ACTIVE provider
 status inside the provider-locked transaction. ADMIN has no provider bypass.
-Other providers, missing/deleted IDs and non-DRAFT reads return 404. Mutation of an
+Other providers and missing/deleted IDs return 404. Step 4.7 also permits owned
+COMPLETE/VALIDATE reads; other non-DRAFT reads return 404. Mutation of an
 owned non-DRAFT record returns 409. Reads also require current provider authorization.
 
 Controllers handle HTTP, services own validation/business rules, and repositories
@@ -267,3 +268,9 @@ valid/incompatible taxonomy combination, all purposes, nonblank content, numeric
 bounds, non-DRAFT completeness, publication protection and location FK integrity.
 Live API-repository tests exercise two simultaneous edits with the same ETag:
 exactly one succeeds, the other receives PRECONDITION_FAILED.
+
+## Step 4.7 extension
+
+Explicit completion and validation actions are documented in
+[Listing completion](LISTING_COMPLETION.md). Draft mutation and mine remain
+DRAFT-only. The existing GET by ID also permits private COMPLETE/VALIDATE reads.

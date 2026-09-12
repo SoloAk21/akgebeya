@@ -24,6 +24,7 @@ export async function listingFixture(){
      },
      async get(id){const r=rows.get(id);return r&&r.providerId===provider?.id&&!r.deletedAt?r:null;},
      async mine(limit,offset){return [...rows.values()].filter(r=>r.providerId===provider?.id&&!r.deletedAt&&r.status==='DRAFT').slice(offset,offset+limit);},
+     async transition(row,target){row.status=target;row.revision=String(++sequence);return row;},
      async update(row,input,remove){
       const {location:_location,price,areaSqm,...rest}=input;Object.assign(row,rest);
       if(price!==undefined)row.price=price===null?null:new Prisma.Decimal(price);
