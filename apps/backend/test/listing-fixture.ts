@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '../src/generated/prisma/client.js';
+import { Prisma,type ListingFeeQuote } from '../src/generated/prisma/client.js';
 import { providerFixture } from './provider-fixture.js';
 import { ListingService } from '../src/listings/service.js';
 import type { DraftRecord,ListingRepository } from '../src/listings/types.js';
@@ -9,6 +9,7 @@ export async function listingFixture(ai?:ListingAiClient){
  const v=await f.providerService.submit(f.context);await f.providerService.decide(f.adminContext,p.id,{verificationId:v.id},true);
  const other=await f.providerService.create(f.otherContext,{role:'BROKER',nameEn:'Other'});
  const ov=await f.providerService.submit(f.otherContext);await f.providerService.decide(f.adminContext,other.id,{verificationId:ov.id},true);
+ const quotes=new Map<string,ListingFeeQuote>();
  const rows=new Map<string,DraftRecord>();let sequence=0;let queue=Promise.resolve();
  const repository:ListingRepository={
   withProvider(userId,run){
@@ -26,6 +27,11 @@ export async function listingFixture(ai?:ListingAiClient){
      async get(id){const r=rows.get(id);return r&&r.providerId===provider?.id&&!r.deletedAt?r:null;},
      async mine(limit,offset){return [...rows.values()].filter(r=>r.providerId===provider?.id&&!r.deletedAt&&r.status==='DRAFT').slice(offset,offset+limit);},
      async transition(row,target){row.status=target;row.revision=String(++sequence);return row;},
+     async findFeeQuote(id){return rows.get(id)?.providerId===provider?.id?quotes.get(id)??null:null;},
+     async createFeeQuote(row,fee,sourceRevision){
+      if(quotes.has(row.id))throw new Error('Duplicate quote');
+      const quote={id:randomUUID(),listingId:row.id,...fee,sourceRevision,calculatedAt:new Date(),createdAt:new Date()};quotes.set(row.id,quote);return quote;
+     },
      async saveAi(row,output){Object.assign(row,output);row.status='AI_ASSIST';row.revision=String(++sequence);return row;},
      async update(row,input,remove){
       const {location:_location,price,areaSqm,...rest}=input;Object.assign(row,rest);
@@ -38,5 +44,5 @@ export async function listingFixture(ai?:ListingAiClient){
    queue=work.then(()=>{},()=>{});return work;
   },
  };
- return {...f,rows,ownerProvider:p,listingService:new ListingService(repository,ai)};
+ return {...f,rows,quotes,ownerProvider:p,listingService:new ListingService(repository,ai)};
 }

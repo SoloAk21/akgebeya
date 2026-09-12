@@ -6,7 +6,7 @@ import { Prisma } from '../../src/generated/prisma/client.js';
 const db=createDatabaseClient();after(()=>db.$disconnect());
 test('Neon completion statuses preserve legacy values and enforce unpublished complete/validated listings',async()=>{
  const labels=await db.$queryRaw<{enumlabel:string}[]>`SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname='akgebeya' AND t.typname='ListingStatus'`;
- assert.deepEqual(labels.map(x=>x.enumlabel).sort(),['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','PUBLISHED','PAUSED','ARCHIVED'].sort());
+ assert.deepEqual(labels.map(x=>x.enumlabel).sort(),['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','CALCULATE_FEE','PUBLISHED','PAUSED','ARCHIVED'].sort());
  const rollback=new Error('ROLLBACK_COMPLETION_SCHEMA');
  try{await db.$transaction(async tx=>{
   const user=await tx.user.create({data:{email:randomUUID()+'@example.com',displayName:'Completion schema fixture'}});

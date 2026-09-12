@@ -1,0 +1,2369 @@
+{
+  "info": {
+    "name": "AkGebeya Step 4.10 Listing Fee",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Private PREVIEW to CALCULATE_FEE. Flat 500 ETB = 50000 minor units, v1. No Chapa/payment/publication. Keep session variables local and never export credentials."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if(!pm.variables.get('ownerToken') && pm.variables.get('fixtureUrl')){",
+          "pm.sendRequest({url:pm.variables.get('fixtureUrl')+'/credentials',method:'POST',header:{Authorization:'Bearer '+pm.variables.get('fixtureKey')}},(e,r)=>{if(e||r.code!==200)throw new Error('Private fixture unavailable');const d=r.json();Object.entries(d.tokens).forEach(([k,v])=>pm.variables.set(k+'Token',v));pm.variables.set('id',d.nonDraftId);});",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1/listings"
+    },
+    {
+      "key": "id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Read stored PREVIEW fixture",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}",
+        "description": "Expected HTTP 200. PREVIEW"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code!==200)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('State',()=>pm.expect(result.status).to.eql('PREVIEW'));",
+              "pm.variables.set('revision',result.etag);",
+              "pm.variables.set('initialRevision',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}",
+            "description": "Expected HTTP 200. PREVIEW"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"PREVIEW\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"titleEn\": \"<stored English>\",\n    \"titleAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"descriptionEn\": \"<stored English>\",\n    \"descriptionAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": {\n      \"id\": \"<UUID>\",\n      \"countryCode\": \"ET\",\n      \"regionEn\": \"Addis Ababa\",\n      \"regionAm\": null,\n      \"cityEn\": \"Addis Ababa\",\n      \"cityAm\": null,\n      \"subcityEn\": null,\n      \"subcityAm\": null,\n      \"addressEn\": null,\n      \"addressAm\": null\n    },\n    \"provider\": {\n      \"id\": \"<UUID>\",\n      \"role\": \"OWNER\",\n      \"nameEn\": \"Listing fixture provider\",\n      \"nameAm\": null\n    },\n    \"createdAt\": \"<ISO timestamp>\",\n    \"updatedAt\": \"<ISO timestamp>\",\n    \"etag\": \"<quoted revision>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unauthenticated fee calculation",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 401. UNAUTHORIZED"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(401));",
+              "if(pm.response.code!==401)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('UNAUTHORIZED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 401. UNAUTHORIZED"
+          },
+          "status": "401",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Authentication required\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "admin denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 403. FORBIDDEN"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "if(pm.response.code!==403)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 403. FORBIDDEN"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "spare denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{spareToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 403. FORBIDDEN"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "if(pm.response.code!==403)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{spareToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 403. FORBIDDEN"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "rejected denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rejectedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 403. FORBIDDEN"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "if(pm.response.code!==403)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rejectedToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 403. FORBIDDEN"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "suspended denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{suspendedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 403. FORBIDDEN"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "if(pm.response.code!==403)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{suspendedToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 403. FORBIDDEN"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "roleless denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rolelessToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 403. FORBIDDEN"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "if(pm.response.code!==403)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rolelessToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 403. FORBIDDEN"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Other provider fee calculation denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 404. LISTING_NOT_FOUND"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(404));",
+              "if(pm.response.code!==404)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 404. LISTING_NOT_FOUND"
+          },
+          "status": "404",
+          "code": 404,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Missing If-Match",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 428. PRECONDITION_REQUIRED"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(428));",
+              "if(pm.response.code!==428)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PRECONDITION_REQUIRED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 428. PRECONDITION_REQUIRED"
+          },
+          "status": "428",
+          "code": 428,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PRECONDITION_REQUIRED\",\n    \"message\": \"If-Match is required\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Malformed If-Match",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "*"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "*"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST"
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Stale If-Match",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "\"0000000000000000000000000000000000000000000000000000000000000000\""
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 412. PRECONDITION_FAILED"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(412));",
+              "if(pm.response.code!==412)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PRECONDITION_FAILED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "\"0000000000000000000000000000000000000000000000000000000000000000\""
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 412. PRECONDITION_FAILED"
+          },
+          "status": "412",
+          "code": 412,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PRECONDITION_FAILED\",\n    \"message\": \"Listing changed; retrieve it again\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied price",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"price\":\"1\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"price\":\"1\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied status",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"CALCULATE_FEE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"CALCULATE_FEE\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied providerId",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"providerId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"providerId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied amountMinor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"amountMinor\":1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amountMinor\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied currency",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"currency\":\"USD\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currency\":\"USD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied pricingVersion",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"pricingVersion\":\"hacked\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"pricingVersion\":\"hacked\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject supplied pricingInputSnapshot",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"pricingInputSnapshot\":{\"providerRole\":\"OWNER\"}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"pricingInputSnapshot\":{\"providerRole\":\"OWNER\"}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Create separate draft",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}",
+        "description": "Expected HTTP 201. DRAFT",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"RESIDENTIAL\",\"type\":\"SALE\",\"propertyType\":\"HOUSE\",\"titleEn\":\"Completion fixture\",\"descriptionEn\":\"Private completion verification fixture\",\"price\":\"100.00\",\"location\":{\"regionEn\":\"Addis Ababa\",\"cityEn\":\"Addis Ababa\"}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(201));",
+              "if(pm.response.code!==201)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('State',()=>pm.expect(result.status).to.eql('DRAFT'));",
+              "pm.variables.set('draftId',result.id);",
+              "pm.variables.set('draftEtag',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}",
+            "description": "Expected HTTP 201. DRAFT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"category\":\"RESIDENTIAL\",\"type\":\"SALE\",\"propertyType\":\"HOUSE\",\"titleEn\":\"Completion fixture\",\"descriptionEn\":\"Private completion verification fixture\",\"price\":\"100.00\",\"location\":{\"regionEn\":\"Addis Ababa\",\"cityEn\":\"Addis Ababa\"}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "201",
+          "code": 201,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"DRAFT\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"titleEn\": \"<stored English>\",\n    \"titleAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"descriptionEn\": \"<stored English>\",\n    \"descriptionAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": {\n      \"id\": \"<UUID>\",\n      \"countryCode\": \"ET\",\n      \"regionEn\": \"Addis Ababa\",\n      \"regionAm\": null,\n      \"cityEn\": \"Addis Ababa\",\n      \"cityAm\": null,\n      \"subcityEn\": null,\n      \"subcityAm\": null,\n      \"addressEn\": null,\n      \"addressAm\": null\n    },\n    \"createdAt\": \"<ISO timestamp>\",\n    \"updatedAt\": \"<ISO timestamp>\",\n    \"etag\": \"<quoted revision>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "DRAFT cannot fee calculation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{draftEtag}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{draftId}}/calculate-fee",
+        "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(409));",
+              "if(pm.response.code!==409)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{draftEtag}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{draftId}}/calculate-fee",
+            "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+          },
+          "status": "409",
+          "code": 409,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"Listing cannot make this transition\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Complete separate fixture",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{draftEtag}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{draftId}}/complete",
+        "description": "Expected HTTP 200. COMPLETE",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code!==200)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('State',()=>pm.expect(result.status).to.eql('COMPLETE'));",
+              "pm.variables.set('draftEtag',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{draftEtag}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{draftId}}/complete",
+            "description": "Expected HTTP 200. COMPLETE",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"COMPLETE\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"titleEn\": \"<stored English>\",\n    \"titleAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"descriptionEn\": \"<stored English>\",\n    \"descriptionAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": {\n      \"id\": \"<UUID>\",\n      \"countryCode\": \"ET\",\n      \"regionEn\": \"Addis Ababa\",\n      \"regionAm\": null,\n      \"cityEn\": \"Addis Ababa\",\n      \"cityAm\": null,\n      \"subcityEn\": null,\n      \"subcityAm\": null,\n      \"addressEn\": null,\n      \"addressAm\": null\n    },\n    \"createdAt\": \"<ISO timestamp>\",\n    \"updatedAt\": \"<ISO timestamp>\",\n    \"etag\": \"<quoted revision>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "COMPLETE cannot fee calculation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{draftEtag}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{draftId}}/calculate-fee",
+        "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(409));",
+              "if(pm.response.code!==409)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{draftEtag}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{draftId}}/calculate-fee",
+            "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+          },
+          "status": "409",
+          "code": 409,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"Listing cannot make this transition\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Validate separate fixture",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{draftEtag}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{draftId}}/validate",
+        "description": "Expected HTTP 200. VALIDATE",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code!==200)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('State',()=>pm.expect(result.status).to.eql('VALIDATE'));",
+              "pm.variables.set('draftEtag',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{draftEtag}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{draftId}}/validate",
+            "description": "Expected HTTP 200. VALIDATE",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"VALIDATE\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"titleEn\": \"<stored English>\",\n    \"titleAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"descriptionEn\": \"<stored English>\",\n    \"descriptionAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": {\n      \"id\": \"<UUID>\",\n      \"countryCode\": \"ET\",\n      \"regionEn\": \"Addis Ababa\",\n      \"regionAm\": null,\n      \"cityEn\": \"Addis Ababa\",\n      \"cityAm\": null,\n      \"subcityEn\": null,\n      \"subcityAm\": null,\n      \"addressEn\": null,\n      \"addressAm\": null\n    },\n    \"createdAt\": \"<ISO timestamp>\",\n    \"updatedAt\": \"<ISO timestamp>\",\n    \"etag\": \"<quoted revision>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "VALIDATE cannot fee calculation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{draftEtag}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{draftId}}/calculate-fee",
+        "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(409));",
+              "if(pm.response.code!==409)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{draftEtag}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{draftId}}/calculate-fee",
+            "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+          },
+          "status": "409",
+          "code": 409,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"Listing cannot make this transition\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Calculate fee stored bilingual listing",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 200. CALCULATE_FEE"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code!==200)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('State',()=>pm.expect(result.status).to.eql('CALCULATE_FEE'));",
+              "pm.variables.set('revision',result.etag);",
+              "pm.test('Exact authoritative V1 fee',()=>pm.expect(result.fee).to.eql({amountMinor:'50000',currency:'ETB',pricingVersion:'v1'}));",
+              "pm.test('Private response',()=>pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 200. CALCULATE_FEE"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"CALCULATE_FEE\",\n  \"fee\": {\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"pricingVersion\": \"v1\"\n  },\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Repeated fee calculation denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(409));",
+              "if(pm.response.code!==409)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 409. LISTING_TRANSITION_CONFLICT"
+          },
+          "status": "409",
+          "code": 409,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"Listing cannot make this transition\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Old revision denied",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{initialRevision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/calculate-fee",
+        "description": "Expected HTTP 412. PRECONDITION_FAILED"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(412));",
+              "if(pm.response.code!==412)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PRECONDITION_FAILED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{initialRevision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/calculate-fee",
+            "description": "Expected HTTP 412. PRECONDITION_FAILED"
+          },
+          "status": "412",
+          "code": 412,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PRECONDITION_FAILED\",\n    \"message\": \"Listing changed; retrieve it again\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Read private fee calculation",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}",
+        "description": "Expected HTTP 200. CALCULATE_FEE"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code!==200)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('State',()=>pm.expect(result.status).to.eql('CALCULATE_FEE'));",
+              "pm.test('Exact authoritative V1 fee',()=>pm.expect(result.fee).to.eql({amountMinor:'50000',currency:'ETB',pricingVersion:'v1'}));",
+              "pm.test('Private response',()=>pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}",
+            "description": "Expected HTTP 200. CALCULATE_FEE"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"CALCULATE_FEE\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"titleEn\": \"<stored English>\",\n    \"titleAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"descriptionEn\": \"<stored English>\",\n    \"descriptionAm\": \"<stored Amharic or null before AI_ASSIST>\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": {\n      \"id\": \"<UUID>\",\n      \"countryCode\": \"ET\",\n      \"regionEn\": \"Addis Ababa\",\n      \"regionAm\": null,\n      \"cityEn\": \"Addis Ababa\",\n      \"cityAm\": null,\n      \"subcityEn\": null,\n      \"subcityAm\": null,\n      \"addressEn\": null,\n      \"addressAm\": null\n    },\n    \"provider\": {\n      \"id\": \"<UUID>\",\n      \"role\": \"OWNER\",\n      \"nameEn\": \"Listing fixture provider\",\n      \"nameAm\": null\n    },\n    \"fee\": {\n      \"amountMinor\": \"50000\",\n      \"currency\": \"ETB\",\n      \"pricingVersion\": \"v1\"\n    },\n    \"createdAt\": \"<ISO timestamp>\",\n    \"updatedAt\": \"<ISO timestamp>\",\n    \"etag\": \"<quoted revision>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Other provider cannot read fee calculation",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}",
+        "description": "Expected HTTP 404. LISTING_NOT_FOUND"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(404));",
+              "if(pm.response.code!==404)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}",
+            "description": "Expected HTTP 404. LISTING_NOT_FOUND"
+          },
+          "status": "404",
+          "code": 404,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject PATCH CALCULATE_FEE",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"CALCULATE_FEE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"CALCULATE_FEE\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject PATCH PUBLISHED",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"PUBLISHED\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"PUBLISHED\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject PATCH DRAFT",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}",
+        "description": "Expected HTTP 400. BAD_REQUEST",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"DRAFT\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "if(pm.response.code!==400)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}",
+            "description": "Expected HTTP 400. BAD_REQUEST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"DRAFT\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "No publication endpoint",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "description": "Expected HTTP 404. NOT_FOUND"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(404));",
+              "if(pm.response.code!==404)pm.execution.setNextRequest(null);",
+              "const data=pm.response.json();",
+              "const result=data.listing || data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "description": "Expected HTTP 404. NOT_FOUND"
+          },
+          "status": "404",
+          "code": 404,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"Route not found\"\n  }\n}"
+        }
+      ]
+    }
+  ]
+}

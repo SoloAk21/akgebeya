@@ -15,5 +15,6 @@ export function listingRouter(auth:AuthService,provider:ProviderService,service:
  router.post('/:listingId/complete',controller.complete);router.post('/:listingId/validate',controller.validate);
  router.post('/:listingId/ai-assist',controller.aiAssist);
  router.post('/:listingId/preview',controller.preview);
+ router.post('/:listingId/calculate-fee',controller.calculateFee);
  return router;
 }

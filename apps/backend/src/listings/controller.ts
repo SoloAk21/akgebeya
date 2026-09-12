@@ -33,5 +33,10 @@ export function listingController(service:ListingService){
   validate(req,empty.optional(),idParams);
   reply(res,await service.preview(authenticatedContext(req),String(req.params.listingId),match(req)));
  };
- return {create,mine,get,update,remove,aiAssist,preview,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
+ const calculateFee:RequestHandler=async(req,res)=>{
+  validate(req,empty.optional(),idParams);
+  const result=await service.calculateFee(authenticatedContext(req),String(req.params.listingId),match(req));
+  res.set('ETag',result.etag).json(result);
+ };
+ return {create,mine,get,update,remove,aiAssist,preview,calculateFee,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
 }

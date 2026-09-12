@@ -10,6 +10,9 @@ import { Prisma } from '../src/generated/prisma/client.js';
 let stage = 'configuration';
 async function verifyMigration() {
   if (loadConfig().nodeEnv === 'production') throw new Error('Development verification only');
+  const fee = process.argv.includes('--fee');
+  const excludedTable = fee ? 'listing_fee_quotes' : '';
+  const excludedTrigger = fee ? 'listings_fee_quote_required' : '';
   const db = createDatabaseClient();
   try {
     stage = 'list tables';
@@ -28,9 +31,9 @@ async function verifyMigration() {
         result.push(createHash('sha256').update(rows[0]!.data).digest('hex'));
       }
       const catalog=await db.$queryRaw`SELECT jsonb_build_object(
-        'indexes',(SELECT jsonb_agg(row_to_json(i) ORDER BY indexname) FROM pg_indexes i WHERE schemaname='akgebeya'),
-        'columns',(SELECT jsonb_agg(row_to_json(c) ORDER BY table_name,ordinal_position) FROM information_schema.columns c WHERE table_schema='akgebeya'),
-        'constraints',(SELECT jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE connamespace='akgebeya'::regnamespace AND conname NOT IN ('listings_draft_publication_check','listings_ai_assist_content_check'))
+        'indexes',(SELECT jsonb_agg(row_to_json(i) ORDER BY indexname) FROM pg_indexes i WHERE schemaname='akgebeya' AND tablename <> ${excludedTable}),
+        'columns',(SELECT jsonb_agg(row_to_json(c) ORDER BY table_name,ordinal_position) FROM information_schema.columns c WHERE table_schema='akgebeya' AND table_name <> ${excludedTable}),
+        'constraints',(SELECT jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE connamespace='akgebeya'::regnamespace AND conrelid NOT IN (SELECT oid FROM pg_class WHERE relnamespace='akgebeya'::regnamespace AND relname=${excludedTable}) AND conname <> ${excludedTrigger} AND conname NOT IN ('listings_draft_publication_check','listings_ai_assist_content_check'))
       ) AS data`;
       result.push(createHash('sha256').update(JSON.stringify(catalog)).digest('hex'));
       return result;

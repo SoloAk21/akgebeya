@@ -58,6 +58,11 @@ export class PrismaListingRepository implements ListingRepository {
      const row=await tx.listing.findUniqueOrThrow({where:{id:current.id},include});
      return (await revisions([row]))[0]!;
     },
+    findFeeQuote:async id=>providerId?tx.listingFeeQuote.findFirst({where:{listingId:id,listing:{providerId,deletedAt:null}}}):null,
+    createFeeQuote:async(current,fee,sourceRevision)=>{
+     if(!providerId||current.providerId!==providerId)throw new HttpError('FORBIDDEN');
+     return tx.listingFeeQuote.create({data:{listingId:current.id,...fee,sourceRevision}});
+    },
     saveAi:async(current,output)=>{
      const {titleEn,titleAm,descriptionEn,descriptionAm}=output;
      const changed=await tx.listing.updateMany({where:{id:current.id,providerId,status:'VALIDATE',deletedAt:null,publishedAt:null},

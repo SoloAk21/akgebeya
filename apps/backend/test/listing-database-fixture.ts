@@ -44,7 +44,11 @@ export async function withListingDatabaseFixture(run:(f:Fixture & {
     const listingIds=rows.map(r=>r.id);
     await db.payment.deleteMany({where:{listingId:{in:listingIds}}});
     await db.media.deleteMany({where:{listingId:{in:listingIds}}});
-    await db.listing.deleteMany({where:{id:{in:listingIds}}});
+    await db.$transaction([
+     db.listingFeeQuote.deleteMany({where:{listingId:{in:listingIds}}}),
+     db.listing.deleteMany({where:{id:{in:listingIds}}}),
+    ]);
+    assert.equal(await db.listingFeeQuote.count({where:{listingId:{in:listingIds}}}),0);
     await db.location.deleteMany({where:{id:{in:[...locations]}}});
     await db.verification.deleteMany({where:{userId:{in:extraIds}}});
     await db.provider.deleteMany({where:{userId:{in:extraIds}}});

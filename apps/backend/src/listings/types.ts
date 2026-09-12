@@ -1,5 +1,5 @@
 import type { ListingAiOutput } from './ai.js';
-import type { Prisma } from '../generated/prisma/client.js';
+import type { Prisma,ListingFeeQuote } from '../generated/prisma/client.js';
 import type { ProviderRecord } from '../providers/types.js';
 import type { DraftInput } from './input.js';
 export type ListingRow=Prisma.ListingGetPayload<{include:{location:true;_count:{select:{payments:true;media:true}}}}>;
@@ -8,7 +8,9 @@ export interface DraftStore {
  provider:ProviderRecord|null;
  create(input:DraftInput):Promise<DraftRecord>;
  get(id:string,lock?:boolean):Promise<DraftRecord|null>;
- transition(current:DraftRecord,target:'COMPLETE'|'VALIDATE'|'PREVIEW'):Promise<DraftRecord>;
+ transition(current:DraftRecord,target:'COMPLETE'|'VALIDATE'|'PREVIEW'|'CALCULATE_FEE'):Promise<DraftRecord>;
+ findFeeQuote(id:string):Promise<ListingFeeQuote|null>;
+ createFeeQuote(current:DraftRecord,fee:Pick<ListingFeeQuote,'amountMinor'|'currency'|'pricingVersion'>,sourceRevision:string):Promise<ListingFeeQuote>;
  saveAi(current:DraftRecord,output:ListingAiOutput):Promise<DraftRecord>;
  mine(limit:number,offset:number):Promise<DraftRecord[]>;
  update(current:DraftRecord,input:DraftInput,remove:boolean):Promise<DraftRecord>;

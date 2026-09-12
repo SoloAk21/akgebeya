@@ -37,6 +37,7 @@ enum ProviderStatus {
 }
 
 enum ListingStatus {
+  CALCULATE_FEE
   PREVIEW
   AI_ASSIST
   COMPLETE
@@ -210,6 +211,7 @@ model Listing {
   location Location?  @relation(fields: [locationId], references: [id], onDelete: Restrict)
   payments Payment[]
   media    Media[]
+  feeQuote ListingFeeQuote?
 
   @@index([providerId, status, createdAt])
   @@index([locationId, status])
@@ -383,4 +385,20 @@ model PhoneOtp {
   @@index([expiresAt])
   @@index([consumedAt, revokedAt, expiresAt])
   @@map("phone_otps")
+}
+
+// Immutable, non-expiring authoritative fee. Payment initiation is a later task.
+model ListingFeeQuote {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listingId      String   @unique @db.Uuid
+  amountMinor    BigInt   @db.BigInt
+  currency       Currency
+  pricingVersion String   @db.VarChar(64)
+  sourceRevision String   @db.VarChar(66)
+  calculatedAt   DateTime @default(now()) @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@map("listing_fee_quotes")
 }

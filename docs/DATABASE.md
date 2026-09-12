@@ -181,3 +181,13 @@ One new migration adds PREVIEW and extends the existing unpublished-state and
 bilingual-content CHECKs to cover it. Existing rows, columns, defaults, indexes,
 foreign keys and all other checks are preserved. Counts remain 48 indexes and
 37 CHECK constraints. See [Listing preview](LISTING_PREVIEW.md).
+
+## Listing fee migration (Step 4.10)
+
+One new migration adds CALCULATE_FEE and an immutable ListingFeeQuote table with
+a unique listing relation, exact V1 amount/currency/version, source ETag and
+calculation/creation timestamps. Quotes have no mutable updatedAt or expiry.
+Deferred triggers enforce quote/state agreement at commit; publication and
+bilingual checks extend to CALCULATE_FEE. Existing records and schema objects
+remain unchanged. Counts are 12 application tables, 50 indexes and 40 CHECKs.
+No Payment row is created. See [Listing fee](LISTING_FEE.md).

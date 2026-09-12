@@ -1,4 +1,5 @@
 import { listingAiInput, parseAiOutput, type ListingAiClient } from './ai.js';
+import { listingFeeV1,feeView } from './fee.js';
 import { assertComplete } from './completion.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -44,7 +45,16 @@ export class ListingService {
  }
  async get(context:AuthContext,id:string){
   if(!z.string().uuid().safeParse(id).success)throw new HttpError('BAD_REQUEST');
-  return this.run(context,async store=>{const row=await store.get(id);if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');return row.status==='PREVIEW'?previewView(row,store.provider!):view(row);});
+  return this.run(context,async store=>{
+   const row=await store.get(id);
+   if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','CALCULATE_FEE'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');
+   if(row.status==='CALCULATE_FEE'){
+    const quote=await store.findFeeQuote(id);
+    if(!quote)throw new HttpError('LISTING_TRANSITION_CONFLICT');
+    return {...previewView(row,store.provider!),fee:feeView(quote)};
+   }
+   return row.status==='PREVIEW'?previewView(row,store.provider!):view(row);
+  });
  }
  async mine(context:AuthContext,query:unknown){
   const input=pagination.safeParse(query);if(!input.success)throw new HttpError('BAD_REQUEST');
@@ -62,6 +72,19 @@ export class ListingService {
     throw new HttpError('LISTING_TRANSITION_CONFLICT');
    assertComplete(row);
    return view(await store.transition(row,target));
+  });
+ }
+ async calculateFee(context:AuthContext,id:string,match:string|undefined){
+  precondition(id,match);
+  return this.run(context,async store=>{
+   const row=await store.get(id,true);
+   if(!row)throw new HttpError('LISTING_NOT_FOUND');
+   if(etag(row)!==match)throw new HttpError('PRECONDITION_FAILED');
+   if(row.status!=='PREVIEW'||row._count.payments>0||await store.findFeeQuote(id))throw new HttpError('LISTING_TRANSITION_CONFLICT');
+   assertComplete(row,true);
+   const quote=await store.createFeeQuote(row,listingFeeV1,etag(row));
+   const updated=await store.transition(row,'CALCULATE_FEE');
+   return {listingId:updated.id,status:updated.status,fee:feeView(quote),etag:etag(updated)};
   });
  }
  async preview(context:AuthContext,id:string,match:string|undefined){

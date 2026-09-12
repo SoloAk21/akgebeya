@@ -6,7 +6,7 @@ import { Prisma } from '../../src/generated/prisma/client.js';
 
 const database = createDatabaseClient();
 after(async () => { await database.$disconnect(); });
-const tables = ['users', 'providers', 'listings', 'locations', 'payments', 'sessions', 'verifications', 'media', 'referrals', 'notifications', 'phone_otps'];
+const tables = ['users', 'providers', 'listings', 'locations', 'payments', 'sessions', 'verifications', 'media', 'referrals', 'notifications', 'phone_otps', 'listing_fee_quotes'];
 
 test('Neon contains all application tables, UUID primary keys, timezone timestamps, foreign keys, indexes, and checks', async () => {
   const schema = await database.$queryRaw<{ schema: string }[]>`SELECT to_regnamespace('akgebeya')::text AS schema`;
@@ -21,6 +21,7 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
   `;
   for (const table of tables) {
     for (const [column, type] of [['id', 'uuid'], ['createdAt', 'timestamp with time zone'], ['updatedAt', 'timestamp with time zone']]) {
+      if (table === 'listing_fee_quotes' && column === 'updatedAt') continue; // Immutable quote uses calculatedAt/createdAt.
       assert.ok(columns.some((row) => row.table_name === table && row.column_name === column && row.data_type === type), `${table}.${column}`);
     }
   }
@@ -31,7 +32,7 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
     WHERE n.nspname = 'akgebeya' AND c.contype = 'f'
   `;
   assert.deepEqual(relations.map((row) => row.name).sort(), [
-    'providers_userId_fkey', 'listings_providerId_fkey', 'listings_locationId_fkey',
+    'listing_fee_quotes_listingId_fkey', 'providers_userId_fkey', 'listings_providerId_fkey', 'listings_locationId_fkey',
     'payments_userId_fkey', 'payments_listingId_fkey', 'sessions_userId_fkey',
     'verifications_userId_fkey', 'verifications_reviewerId_fkey', 'media_uploadedById_fkey',
     'media_listingId_fkey', 'media_verificationId_fkey', 'referrals_referrerId_fkey',
@@ -50,14 +51,14 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
     JOIN pg_class t ON t.oid = i.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'akgebeya' AND t.relname <> '_prisma_migrations'
   `;
-  assert.equal(indexes[0]?.count, 48);
+  assert.equal(indexes[0]?.count, 50);
   assert.equal(indexes[0]?.all_valid, true);
   const checks = await database.$queryRaw<{ count: number; all_valid: boolean }[]>`
     SELECT count(*)::int AS count, bool_and(c.convalidated) AS all_valid
     FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = 'akgebeya' AND c.contype = 'c'
   `;
-  assert.equal(checks[0]?.count, 37);
+  assert.equal(checks[0]?.count, 40);
   assert.equal(checks[0]?.all_valid, true);
 });
 
