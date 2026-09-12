@@ -37,6 +37,7 @@ enum ProviderStatus {
 }
 
 enum ListingStatus {
+  PREVIEW
   AI_ASSIST
   COMPLETE
   VALIDATE

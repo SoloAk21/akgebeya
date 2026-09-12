@@ -14,5 +14,6 @@ export function listingRouter(auth:AuthService,provider:ProviderService,service:
  router.patch('/:listingId',controller.update);router.delete('/:listingId',controller.remove);
  router.post('/:listingId/complete',controller.complete);router.post('/:listingId/validate',controller.validate);
  router.post('/:listingId/ai-assist',controller.aiAssist);
+ router.post('/:listingId/preview',controller.preview);
  return router;
 }

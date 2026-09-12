@@ -7,7 +7,7 @@ import { Prisma } from '../../src/generated/prisma/client.js';
 const db = createDatabaseClient();
 after(() => db.$disconnect());
 
-test('Neon AI_ASSIST requires bilingual content and preserves publication protections', async () => {
+test('Neon AI_ASSIST and PREVIEW require bilingual content and preserve publication protections', async () => {
   const rollback = new Error('ROLLBACK_AI_SCHEMA');
   try {
     await db.$transaction(async tx => {
@@ -32,20 +32,22 @@ test('Neon AI_ASSIST requires bilingual content and preserves publication protec
         }
         assert.ok(denied, 'Expected CHECK constraint rejection');
       }
-      await reject({ status: 'AI_ASSIST' });
-      await reject({ status: 'AI_ASSIST', titleAm: '\u1218\u122c\u1275' });
-      await reject({ status: 'AI_ASSIST', descriptionAm: '\u12e8\u1219\u12a8\u122b \u1218\u122c\u1275' });
-      await tx.listing.update({ where: { id: row.id }, data: {
-        status: 'AI_ASSIST', titleAm: '\u1218\u122c\u1275', descriptionAm: '\u12e8\u1219\u12a8\u122b \u1218\u122c\u1275',
-      } });
-      for (const field of ['titleEn', 'titleAm', 'descriptionEn', 'descriptionAm'] as const) {
-        await reject({ [field]: null });
-        await reject({ [field]: ' \t\n' });
+      for (const status of ['AI_ASSIST', 'PREVIEW'] as const) {
+        await reject({ status, titleAm: null, descriptionAm: null });
+        await reject({ status, descriptionAm: null, titleAm: '\u1218\u122c\u1275' });
+        await reject({ status, titleAm: null, descriptionAm: '\u12e8\u1219\u12a8\u122b \u1218\u122c\u1275' });
+        await tx.listing.update({ where: { id: row.id }, data: {
+          status, titleAm: '\u1218\u122c\u1275', descriptionAm: '\u12e8\u1219\u12a8\u122b \u1218\u122c\u1275',
+        } });
+        for (const field of ['titleEn', 'titleAm', 'descriptionEn', 'descriptionAm'] as const) {
+          await reject({ [field]: null });
+          await reject({ [field]: ' \t\n' });
+        }
+        await reject({ price: '0' });
+        await reject({ bedrooms: -1 });
+        await reject({ category: 'RESIDENTIAL' });
       }
-      await reject({ price: '0' });
-      await reject({ bedrooms: -1 });
-      await reject({ category: 'RESIDENTIAL' });
-      for (const status of ['DRAFT', 'COMPLETE', 'VALIDATE', 'AI_ASSIST'] as const) {
+      for (const status of ['DRAFT', 'COMPLETE', 'VALIDATE', 'AI_ASSIST', 'PREVIEW'] as const) {
         await tx.listing.update({ where: { id: row.id }, data: { status } });
         await reject({ publishedAt: new Date() });
       }

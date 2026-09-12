@@ -14,7 +14,7 @@ function match(req:Request){
  if(count>1)throw new HttpError('BAD_REQUEST');
  const value=req.headers['if-match'];return typeof value==='string'?value:undefined;
 }
-function reply(res:Response,listing:Awaited<ReturnType<ListingService['get']>>,status=200){res.set('ETag',listing.etag).status(status).json({listing});}
+function reply(res:Response,listing:{etag:string},status=200){res.set('ETag',listing.etag).status(status).json({listing});}
 export function listingController(service:ListingService){
  const create:RequestHandler=async(req,res)=>{validate(req,draftInput,empty,empty,true);reply(res,await service.create(authenticatedContext(req),req.body),201);};
  const mine:RequestHandler=async(req,res)=>{validate(req,empty.optional(),empty,pagination);res.json(await service.mine(authenticatedContext(req),req.query));};
@@ -29,5 +29,9 @@ export function listingController(service:ListingService){
   validate(req,empty.optional(),idParams);
   reply(res,await service.aiAssist(authenticatedContext(req),String(req.params.listingId),match(req)));
  };
- return {create,mine,get,update,remove,aiAssist,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
+ const preview:RequestHandler=async(req,res)=>{
+  validate(req,empty.optional(),idParams);
+  reply(res,await service.preview(authenticatedContext(req),String(req.params.listingId),match(req)));
+ };
+ return {create,mine,get,update,remove,aiAssist,preview,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
 }

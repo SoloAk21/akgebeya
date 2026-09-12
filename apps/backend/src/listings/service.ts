@@ -22,6 +22,14 @@ function precondition(id:string,match:string|undefined){
   if(match===undefined)throw new HttpError('PRECONDITION_REQUIRED');
   if(!/^"[a-f0-9]{64}"$/.test(match))throw new HttpError('BAD_REQUEST');
 }
+function previewView(row:DraftRecord,provider:NonNullable<DraftStore['provider']>){
+ const location=row.location;
+ return {...view(row),location:location?{
+  id:location.id,countryCode:location.countryCode,regionEn:location.regionEn,regionAm:location.regionAm,
+  cityEn:location.cityEn,cityAm:location.cityAm,subcityEn:location.subcityEn,subcityAm:location.subcityAm,
+  addressEn:location.addressEn,addressAm:location.addressAm,
+ }:null,provider:{id:provider.id,role:provider.role,nameEn:provider.nameEn,nameAm:provider.nameAm}};
+}
 export class ListingService {
  constructor(private readonly repository:ListingRepository,private readonly ai?:ListingAiClient){}
  private run<T>(context:AuthContext,work:(store:DraftStore)=>Promise<T>){
@@ -36,7 +44,7 @@ export class ListingService {
  }
  async get(context:AuthContext,id:string){
   if(!z.string().uuid().safeParse(id).success)throw new HttpError('BAD_REQUEST');
-  return this.run(context,async store=>{const row=await store.get(id);if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');return view(row);});
+  return this.run(context,async store=>{const row=await store.get(id);if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');return row.status==='PREVIEW'?previewView(row,store.provider!):view(row);});
  }
  async mine(context:AuthContext,query:unknown){
   const input=pagination.safeParse(query);if(!input.success)throw new HttpError('BAD_REQUEST');
@@ -54,6 +62,22 @@ export class ListingService {
     throw new HttpError('LISTING_TRANSITION_CONFLICT');
    assertComplete(row);
    return view(await store.transition(row,target));
+  });
+ }
+ async preview(context:AuthContext,id:string,match:string|undefined){
+  precondition(id,match);
+  const check=(row:DraftRecord|null):DraftRecord=>{
+   if(!row)throw new HttpError('LISTING_NOT_FOUND');
+   if(etag(row)!==match)throw new HttpError('PRECONDITION_FAILED');
+   if(row.status!=='AI_ASSIST'||row._count.payments>0)throw new HttpError('LISTING_TRANSITION_CONFLICT');
+   return row;
+  };
+  await this.run(context,async store=>{check(await store.get(id));});
+  // Reauthorize and lock current provider, listing and location in one short transaction.
+  return this.run(context,async store=>{
+   const row=check(await store.get(id,true));
+   assertComplete(row,true);
+   return previewView(await store.transition(row,'PREVIEW'),store.provider!);
   });
  }
  async aiAssist(context:AuthContext,id:string,match:string|undefined){

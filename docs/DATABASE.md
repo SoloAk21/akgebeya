@@ -174,3 +174,10 @@ AI_ASSIST requires non-null Amharic title/description, alongside the existing
 nonblank and non-DRAFT completeness checks. Existing rows, columns, defaults,
 indexes/FKs and the PUBLISHED check remain unchanged. Counts are 48 indexes and
 37 CHECK constraints. See [Listing AI assist](LISTING_AI_ASSIST.md).
+
+## Listing preview migration (Step 4.9)
+
+One new migration adds PREVIEW and extends the existing unpublished-state and
+bilingual-content CHECKs to cover it. Existing rows, columns, defaults, indexes,
+foreign keys and all other checks are preserved. Counts remain 48 indexes and
+37 CHECK constraints. See [Listing preview](LISTING_PREVIEW.md).

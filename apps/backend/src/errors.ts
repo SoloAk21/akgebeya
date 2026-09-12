@@ -29,7 +29,7 @@ export class HttpError extends Error {
   }
 }
 
-const listingValidationFields=['category','type','propertyType','titleEn','titleAm','descriptionEn','descriptionAm','locationId','price','currency','bedrooms','bathrooms','areaSqm'] as const;
+const listingValidationFields=['category','type','propertyType','titleEn','titleAm','descriptionEn','descriptionAm','locationId','price','currency','bedrooms','bathrooms','areaSqm','publishedAt'] as const;
 export type ListingValidationField=typeof listingValidationFields[number];
 export class ListingIncompleteError extends HttpError {
   readonly fields:readonly ListingValidationField[];

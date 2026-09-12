@@ -1,0 +1,25 @@
+import type { CompletionScenario } from './completion-scenarios.js';
+import { completeInput } from '../test/completion-fixture.js';
+export const previewScenarios:CompletionScenario[]=[
+ {name:'Read stored AI_ASSIST fixture',actor:'owner',method:'GET',path:'/{{id}}',status:200,listingStatus:'AI_ASSIST',capture:{revision:'etag',initialRevision:'etag'}},
+ {name:'Unauthenticated preview',method:'POST',path:'/{{id}}/preview',status:401,error:'UNAUTHORIZED'},
+ ...(['admin','spare','rejected','suspended','roleless'] as const).map(actor=>({name:actor+' denied',actor,method:'POST',path:'/{{id}}/preview',match:'{{revision}}',status:403,error:'FORBIDDEN'})),
+ {name:'Other provider preview denied',actor:'other',method:'POST',path:'/{{id}}/preview',match:'{{revision}}',status:404,error:'LISTING_NOT_FOUND'},
+ {name:'Missing If-Match',actor:'owner',method:'POST',path:'/{{id}}/preview',status:428,error:'PRECONDITION_REQUIRED'},
+ {name:'Malformed If-Match',actor:'owner',method:'POST',path:'/{{id}}/preview',match:'*',status:400,error:'BAD_REQUEST'},
+ {name:'Stale If-Match',actor:'owner',method:'POST',path:'/{{id}}/preview',match:'"'+'0'.repeat(64)+'"',status:412,error:'PRECONDITION_FAILED'},
+ ...[{price:'1'},{status:'PREVIEW'},{providerId:'injected'}].map(body=>({name:'Reject supplied '+Object.keys(body)[0],actor:'owner' as const,method:'POST',path:'/{{id}}/preview',match:'{{revision}}',body,status:400,error:'BAD_REQUEST'})),
+ {name:'Create separate draft',actor:'owner',method:'POST',path:'',body:completeInput(),status:201,listingStatus:'DRAFT',capture:{draftId:'id',draftEtag:'etag'}},
+ {name:'DRAFT cannot preview',actor:'owner',method:'POST',path:'/{{draftId}}/preview',match:'{{draftEtag}}',status:409,error:'LISTING_TRANSITION_CONFLICT'},
+ {name:'Complete separate fixture',actor:'owner',method:'POST',path:'/{{draftId}}/complete',match:'{{draftEtag}}',body:{},status:200,listingStatus:'COMPLETE',capture:{draftEtag:'etag'}},
+ {name:'COMPLETE cannot preview',actor:'owner',method:'POST',path:'/{{draftId}}/preview',match:'{{draftEtag}}',status:409,error:'LISTING_TRANSITION_CONFLICT'},
+ {name:'Validate separate fixture',actor:'owner',method:'POST',path:'/{{draftId}}/validate',match:'{{draftEtag}}',body:{},status:200,listingStatus:'VALIDATE',capture:{draftEtag:'etag'}},
+ {name:'VALIDATE cannot preview',actor:'owner',method:'POST',path:'/{{draftId}}/preview',match:'{{draftEtag}}',status:409,error:'LISTING_TRANSITION_CONFLICT'},
+ {name:'Preview stored bilingual listing',actor:'owner',method:'POST',path:'/{{id}}/preview',match:'{{revision}}',status:200,listingStatus:'PREVIEW',capture:{revision:'etag'}},
+ {name:'Repeated preview denied',actor:'owner',method:'POST',path:'/{{id}}/preview',match:'{{revision}}',status:409,error:'LISTING_TRANSITION_CONFLICT'},
+ {name:'Old revision denied',actor:'owner',method:'POST',path:'/{{id}}/preview',match:'{{initialRevision}}',status:412,error:'PRECONDITION_FAILED'},
+ {name:'Read private preview',actor:'owner',method:'GET',path:'/{{id}}',status:200,listingStatus:'PREVIEW'},
+ {name:'Other provider cannot read preview',actor:'other',method:'GET',path:'/{{id}}',status:404,error:'LISTING_NOT_FOUND'},
+ ...['PREVIEW','PUBLISHED','DRAFT'].map(status=>({name:'Reject PATCH '+status,actor:'owner' as const,method:'PATCH',path:'/{{id}}',match:'{{revision}}',body:{status},status:400,error:'BAD_REQUEST'})),
+ {name:'No publication endpoint',actor:'owner',method:'POST',path:'/{{id}}/publish',match:'{{revision}}',status:404,error:'NOT_FOUND'},
+];

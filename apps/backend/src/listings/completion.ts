@@ -1,7 +1,7 @@
 import { draftInput,locationInput,compatible } from './input.js';
 import { ListingIncompleteError,type ListingValidationField } from '../errors.js';
 import type { DraftRecord } from './types.js';
-export function assertComplete(row:DraftRecord):void {
+export function assertComplete(row:DraftRecord,preview=false):void {
  const fields=new Set<ListingValidationField>();
  for(const key of ['category','type','propertyType','titleEn','descriptionEn'] as const)
   if(row[key]===null||!draftInput.shape[key].safeParse(row[key]).success)fields.add(key);
@@ -16,6 +16,10 @@ export function assertComplete(row:DraftRecord):void {
  else {
   const {countryCode,regionEn,regionAm,cityEn,cityAm,subcityEn,subcityAm,addressEn,addressAm}=location;
   if(!locationInput.safeParse({countryCode,regionEn,regionAm,cityEn,cityAm,subcityEn,subcityAm,addressEn,addressAm}).success)fields.add('locationId');
+ }
+ if(preview){
+  for(const key of ['titleAm','descriptionAm'] as const)if(row[key]===null)fields.add(key);
+  if(row.publishedAt!==null)fields.add('publishedAt');
  }
  if(fields.size)throw new ListingIncompleteError([...fields]);
 }

@@ -8,7 +8,7 @@ export interface DraftStore {
  provider:ProviderRecord|null;
  create(input:DraftInput):Promise<DraftRecord>;
  get(id:string,lock?:boolean):Promise<DraftRecord|null>;
- transition(current:DraftRecord,target:'COMPLETE'|'VALIDATE'):Promise<DraftRecord>;
+ transition(current:DraftRecord,target:'COMPLETE'|'VALIDATE'|'PREVIEW'):Promise<DraftRecord>;
  saveAi(current:DraftRecord,output:ListingAiOutput):Promise<DraftRecord>;
  mine(limit:number,offset:number):Promise<DraftRecord[]>;
  update(current:DraftRecord,input:DraftInput,remove:boolean):Promise<DraftRecord>;
