@@ -15,3 +15,5 @@ interrupted reservations block replacement attempts. See
 the required development/test verification gate.
 
 Steps 4.12-4.13 add authoritative server-side verification/reconciliation and a separate paid publication action. See [Payment verification and publication](PAYMENT_VERIFICATION_PUBLICATION.md). Callback/return URLs never establish success.
+
+The webhook/reconciliation/notification foundation reuses the same payment and quote, with atomic bilingual database notifications. See [Chapa webhook](CHAPA_WEBHOOK.md). It does not automatically publish or send external notifications.

@@ -1,3 +1,7 @@
+import {PaymentWebhookService} from './payments/webhook-service.js';
+import {PrismaPaymentWebhookRepository} from './payments/webhook-repository.js';
+import {PaymentVerificationService} from './payments/verification-service.js';
+import {loadChapaWebhookConfig} from './config.js';
 import {HttpChapaClient} from './payments/chapa-client.js';
 import {loadChapaConfig} from './config.js';
 import { GeminiListingAiClient } from './listings/gemini-client.js';
@@ -38,7 +42,8 @@ try {
   const chapaConfig=loadChapaConfig();
   const chapa=chapaConfig.secretKey&&chapaConfig.baseUrl&&chapaConfig.callbackUrl&&chapaConfig.returnUrl?new HttpChapaClient(chapaConfig):undefined;
   const listings = new ListingService(new PrismaListingRepository(database), new GeminiListingAiClient(loadGeminiConfig()), chapa);
-  const server = createServer(createApp(config, auth, telegram, phone, google, provider, listings));
+  const webhook=new PaymentWebhookService(new PrismaPaymentWebhookRepository(database),new PaymentVerificationService(new PrismaListingRepository(database),chapa),loadChapaWebhookConfig().secret);
+  const server = createServer(createApp(config, auth, telegram, phone, google, provider, listings, webhook));
   server.listen(config.port, config.host, () => {
     console.log(`Backend listening at http://${config.host}:${config.port}${config.apiPrefix}`);
   });

@@ -1,3 +1,5 @@
+import {paymentWebhookRouter} from './payments/webhook-routes.js';
+import type {PaymentWebhookService} from './payments/webhook-service.js';
 import { listingRouter } from './listings/routes.js';
 import type { ListingService } from './listings/service.js';
 import { providerRouter } from './providers/routes.js';
@@ -13,7 +15,7 @@ import helmet from 'helmet';
 import type { AppConfig } from './config.js';
 import { errorHandler, notFound } from './errors.js';
 
-export function createApp(config: AppConfig, auth: AuthService, telegram?: TelegramAuthService, phone?: PhoneOtpService, google?: GoogleAuthService, provider?: ProviderService, listings?: ListingService) {
+export function createApp(config: AppConfig, auth: AuthService, telegram?: TelegramAuthService, phone?: PhoneOtpService, google?: GoogleAuthService, provider?: ProviderService, listings?: ListingService, webhook?: PaymentWebhookService) {
   const app = express();
   app.set('env', config.nodeEnv);
   app.disable('x-powered-by');
@@ -28,6 +30,7 @@ export function createApp(config: AppConfig, auth: AuthService, telegram?: Teleg
   app.use(`${config.apiPrefix}/auth`, authRouter(auth, telegram, phone, google));
   if (provider) app.use(config.apiPrefix, providerRouter(auth, provider));
   if (listings && provider) app.use(config.apiPrefix + '/listings', listingRouter(auth,provider,listings));
+  if (webhook) app.use(config.apiPrefix, paymentWebhookRouter(webhook));
   app.use(notFound);
   app.use(errorHandler);
   return app;

@@ -1,0 +1,1462 @@
+{
+  "info": {
+    "name": "AkGebeya Chapa Webhook, Reconciliation and Notifications",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Database-only notifications after authoritative verification. Run via the local deterministic runner for pending/failure/mismatch/network cases; never fabricate live gateway state. No automatic publication. Private local environment values only."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1"
+    },
+    {
+      "key": "id",
+      "value": ""
+    },
+    {
+      "key": "referenceToken",
+      "value": ""
+    },
+    {
+      "key": "webhookToken",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if(!pm.variables.get('ownerToken') && pm.variables.get('fixtureUrl')){",
+          "pm.sendRequest({url:pm.variables.get('fixtureUrl')+'/credentials',method:'POST',header:{Authorization:'Bearer '+pm.variables.get('fixtureKey')}},(e,r)=>{if(e||r.code!==200)throw new Error('Private fixture unavailable');const d=r.json();Object.entries(d.tokens).forEach(([k,v])=>pm.variables.set(k+'Token',v));pm.variables.set('id',d.nonDraftId);});",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Missing signature",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; {\"error\":{\"code\":\"WEBHOOK_UNAUTHORIZED\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(401));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('WEBHOOK_UNAUTHORIZED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 401; {\"error\":{\"code\":\"WEBHOOK_UNAUTHORIZED\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "401",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"WEBHOOK_UNAUTHORIZED\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Invalid signature",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401; {\"error\":{\"code\":\"WEBHOOK_UNAUTHORIZED\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(401));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('WEBHOOK_UNAUTHORIZED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "0000000000000000000000000000000000000000000000000000000000000000"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 401; {\"error\":{\"code\":\"WEBHOOK_UNAUTHORIZED\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "401",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"WEBHOOK_UNAUTHORIZED\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Malformed JSON",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"INVALID_JSON\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('INVALID_JSON'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"INVALID_JSON\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"INVALID_JSON\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Missing event",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Missing reference",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unknown reference",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"unknown-local-reference\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"unknown-local-reference\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unsupported refund event ignored",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.refunded\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.refunded\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Pending authoritative state",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Failed authoritative state",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Duplicate failure",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Authoritative amount mismatch",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 502; {\"error\":{\"code\":\"PAYMENT_VERIFICATION_MISMATCH\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(502));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('PAYMENT_VERIFICATION_MISMATCH'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 502; {\"error\":{\"code\":\"PAYMENT_VERIFICATION_MISMATCH\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "502",
+          "code": 502,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PAYMENT_VERIFICATION_MISMATCH\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Network ambiguity",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 502; {\"error\":{\"code\":\"PAYMENT_VERIFICATION_UNAVAILABLE\",\"message\":\"<fixed safe message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(502));",
+              "pm.test('Safe error',()=>pm.expect(pm.response.json().error.code).to.eql('PAYMENT_VERIFICATION_UNAVAILABLE'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 502; {\"error\":{\"code\":\"PAYMENT_VERIFICATION_UNAVAILABLE\",\"message\":\"<fixed safe message>\"}}"
+          },
+          "status": "502",
+          "code": 502,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PAYMENT_VERIFICATION_UNAVAILABLE\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Authoritative success despite tampered payload facts",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.failed\",\"tx_ref\":\"{{referenceToken}}\",\"status\":\"failed\",\"amount\":\"1\",\"currency\":\"USD\",\"userId\":\"untrusted\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.failed\",\"tx_ref\":\"{{referenceToken}}\",\"status\":\"failed\",\"amount\":\"1\",\"currency\":\"USD\",\"userId\":\"untrusted\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Duplicate success",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Out of order failure",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.failed\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "const body=JSON.stringify(JSON.parse(pm.variables.replaceIn(pm.request.body.raw)));pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(body,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.failed\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Replay success",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/payments/webhooks/chapa",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "chapa-signature",
+            "value": "{{webhookSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const CryptoJS=require('crypto-js');",
+              "const secret=pm.variables.get('webhookToken');if(!secret)throw new Error('Private webhook secret missing');",
+              "pm.variables.set('webhookSignature',CryptoJS.HmacSHA256(secret,secret).toString(CryptoJS.enc.Hex));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Private acknowledgement',()=>pm.expect(pm.response.json()).to.eql({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/webhooks/chapa",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "chapa-signature",
+                "value": "{{webhookSignature}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"event\":\"charge.success\",\"tx_ref\":\"{{referenceToken}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Expected HTTP 200; {\"status\":\"ok\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"status\": \"ok\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Manual verification converges",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/listings/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"VERIFY_PAYMENT\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<timestamp>\"},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "pm.test('Verified payment only',()=>{const r=pm.response.json();pm.expect(r.status).to.eql('VERIFY_PAYMENT');pm.expect(r.payment.status).to.eql('SUCCEEDED');pm.expect(r.payment.amountMinor).to.eql('50000');pm.expect(r.publishedAt).to.eql(null);});"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe response",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/listings/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"VERIFY_PAYMENT\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<timestamp>\"},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"VERIFY_PAYMENT\",\n  \"payment\": {\n    \"status\": \"SUCCEEDED\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": \"<timestamp>\"\n  },\n  \"publishedAt\": null,\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    }
+  ]
+}

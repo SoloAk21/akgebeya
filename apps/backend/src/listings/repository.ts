@@ -50,9 +50,11 @@ export class PrismaListingRepository implements ListingRepository {
      await tx.$queryRaw`SELECT id FROM akgebeya.payments WHERE "listingId"=${listingId}::uuid FOR UPDATE`;
      return tx.payment.findFirst({where:{listingId},orderBy:{createdAt:'asc'}});
     },
-    settlePayment:async(id,status)=>{
-     await tx.$executeRaw`UPDATE akgebeya.payments SET status=${status}::akgebeya."PaymentStatus", "paidAt"=CASE WHEN ${status}='SUCCEEDED' THEN GREATEST(clock_timestamp(),"createdAt") ELSE NULL END,"updatedAt"=clock_timestamp() WHERE id=${id}::uuid AND status<>'SUCCEEDED'`;
-     return tx.payment.findUniqueOrThrow({where:{id}});
+    settlePayment:async(id,status,notification)=>{
+     const changed=await tx.$executeRaw`UPDATE akgebeya.payments SET status=${status}::akgebeya."PaymentStatus", "paidAt"=CASE WHEN ${status}='SUCCEEDED' THEN GREATEST(clock_timestamp(),"createdAt") ELSE NULL END,"updatedAt"=clock_timestamp() WHERE id=${id}::uuid AND status<>'SUCCEEDED' AND status::text<>${status}`;
+     const payment=await tx.payment.findUniqueOrThrow({where:{id}});
+     if(changed===1)await tx.notification.create({data:{userId:payment.userId,type:'PAYMENT',...notification}});
+     return payment;
     },
     publish:async current=>{
      const changed=await tx.$executeRaw`UPDATE akgebeya.listings SET status='PUBLISHED',"publishedAt"=clock_timestamp() WHERE id=${current.id}::uuid AND "providerId"=${providerId}::uuid AND status::text='VERIFY_PAYMENT' AND "publishedAt" IS NULL AND "deletedAt" IS NULL`;

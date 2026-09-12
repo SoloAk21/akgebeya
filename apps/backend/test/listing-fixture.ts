@@ -9,6 +9,7 @@ export async function listingFixture(ai?:ListingAiClient,chapa?:import('../src/p
  const v=await f.providerService.submit(f.context);await f.providerService.decide(f.adminContext,p.id,{verificationId:v.id},true);
  const other=await f.providerService.create(f.otherContext,{role:'BROKER',nameEn:'Other'});
  const ov=await f.providerService.submit(f.otherContext);await f.providerService.decide(f.adminContext,other.id,{verificationId:ov.id},true);
+ const notifications:import('../src/payments/notifications.js').PaymentNotification[]=[];
  const payments=new Map<string,Payment>();
  const quotes=new Map<string,ListingFeeQuote>();
  const rows=new Map<string,DraftRecord>();let sequence=0;let queue=Promise.resolve();
@@ -19,7 +20,7 @@ export async function listingFixture(ai?:ListingAiClient,chapa?:import('../src/p
     const provider=[...f.records.values()].find(p=>p.userId===userId)??null;
     return run({provider,
      async findPayment(id){return [...payments.values()].find(p=>p.listingId===id)??null;},
-     async settlePayment(id,status){const p=payments.get(id)!;if(p.status!=='SUCCEEDED'){p.status=status;p.paidAt=status==='SUCCEEDED'?new Date():null;}return p;},
+     async settlePayment(id,status,notification){const p=payments.get(id)!;if(p.status!=='SUCCEEDED'&&p.status!==status){p.status=status;p.paidAt=status==='SUCCEEDED'?new Date():null;notifications.push(notification);}return p;},
      async publish(row){row.status='PUBLISHED';row.publishedAt=new Date();row.revision=String(++sequence);return row;},
      async reservePayment(input){const p:Payment={...input,id:randomUUID(),gateway:'CHAPA',status:'PENDING',initializationStatus:'RESERVED',checkoutUrl:null,paidAt:null,refundedAmountMinor:0n,createdAt:new Date(),updatedAt:new Date()};payments.set(p.id,p);rows.get(input.listingId!)!._count.payments++;return {...p};},
      async initializePayment(id,url){Object.assign(payments.get(id)!,{initializationStatus:'INITIALIZED',checkoutUrl:url});},
@@ -51,5 +52,5 @@ export async function listingFixture(ai?:ListingAiClient,chapa?:import('../src/p
    queue=work.then(()=>{},()=>{});return work;
   },
  };
- return {...f,rows,quotes,payments,repository,ownerProvider:p,listingService:new ListingService(repository,ai,chapa)};
+ return {...f,rows,quotes,payments,notifications,repository,ownerProvider:p,listingService:new ListingService(repository,ai,chapa)};
 }

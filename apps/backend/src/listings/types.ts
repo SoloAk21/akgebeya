@@ -1,3 +1,4 @@
+import type { PaymentNotification } from '../payments/notifications.js';
 import type { ListingAiOutput } from './ai.js';
 import type { Prisma,ListingFeeQuote,Payment } from '../generated/prisma/client.js';
 import type { ProviderRecord } from '../providers/types.js';
@@ -8,7 +9,7 @@ export interface DraftStore {
  provider:ProviderRecord|null;
  findPayment(listingId:string):Promise<Payment|null>;
  reservePayment(input:Pick<Payment,'userId'|'listingId'|'feeQuoteId'|'amountMinor'|'currency'|'gatewayReference'|'idempotencyKey'|'sourceRevision'>):Promise<Payment>;
- settlePayment(id:string,status:'SUCCEEDED'|'FAILED'):Promise<Payment>;
+ settlePayment(id:string,status:'SUCCEEDED'|'FAILED',notification:PaymentNotification):Promise<Payment>;
  publish(current:DraftRecord):Promise<DraftRecord>;
  initializePayment(id:string,checkoutUrl:string):Promise<void>;
 

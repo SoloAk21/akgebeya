@@ -2,6 +2,7 @@ import {majorToMinor,ChapaVerificationFailure,type ChapaVerificationClient} from
 import {z} from 'zod';
 import type {ChapaConfig} from '../config.js';
 import {ChapaFailure,checkoutSchema,minorToMajor,type ChapaClient,type ChapaInput} from './client.js';
+const verificationStatus=z.enum(['success','pending','failed','cancelled','failed/cancelled']).transform(value=>value==='cancelled'||value==='failed/cancelled'?'failed':value);
 const envelope=z.object({status:z.literal('success'),data:z.object({checkout_url:checkoutSchema})});
 // Only fixed documented rejections are classified as definitive. Duplicate references are unresolved.
 const rejections=new Set(["Authorization required","Invalid API Key or User doesn’t exist","Invalid API Key or User doesn't exist","Invalid currency, currency is not supported","Payments through API is disabled, please contact us","User can’t receive payments"]);
@@ -19,9 +20,11 @@ export class HttpChapaClient implements ChapaClient,ChapaVerificationClient {
    try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.byteLength;if(size>16384)throw new ChapaVerificationFailure();chunks.push(part.value);}}
    finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
    const body:unknown=JSON.parse(Buffer.concat(chunks).toString('utf8'));
-   const parsed=z.object({status:z.enum(['success','pending','failed']),data:z.object({status:z.enum(['success','pending','failed']),tx_ref:z.string().min(1).max(128),amount:z.union([z.string(),z.number()]),currency:z.string().min(1).max(8)})}).safeParse(body);
+   const parsed=z.object({status:verificationStatus,data:z.object({mode:z.enum(['test','live']),status:verificationStatus,tx_ref:z.string().min(1).max(128),amount:z.union([z.string(),z.number()]),currency:z.string().min(1).max(8)})}).safeParse(body);
    if(!parsed.success)throw new ChapaVerificationFailure();
    const data=parsed.data.data;
+   const expectedMode=c.secretKey.startsWith('CHASECK_TEST-')?'test':'live';
+   if(data.mode!==expectedMode)throw new ChapaVerificationFailure();
    if(parsed.data.status!=='success'&&parsed.data.status!==data.status)throw new ChapaVerificationFailure();
    return {status:data.status,txRef:data.tx_ref,amountMinor:majorToMinor(data.amount),currency:data.currency};
   }catch{throw new ChapaVerificationFailure();}finally{clearTimeout(timer);}

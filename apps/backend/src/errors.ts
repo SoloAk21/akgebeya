@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  WEBHOOK_UNAUTHORIZED:{status:401,message:'Webhook authentication failed'},
   PAYMENT_VERIFICATION_UNAVAILABLE:{status:502,message:'Payment verification is unavailable'},
   PAYMENT_VERIFICATION_MISMATCH:{status:502,message:'Payment verification could not confirm the expected transaction'},
   PAYMENT_INITIALIZATION_REJECTED: {status:502,message:'Payment initialization was rejected'},
@@ -55,7 +56,7 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _request, resp
   }
 
   if (error instanceof HttpError) {
-    if (error.status === 401) response.set('WWW-Authenticate', 'Bearer');
+    if (error.status === 401 && error.code !== 'WEBHOOK_UNAUTHORIZED') response.set('WWW-Authenticate', 'Bearer');
     response.status(error.status).json({ error: { code: error.code, message: error.message, ...(error instanceof ListingIncompleteError ? { fields: error.fields } : {}) } });
     return;
   }

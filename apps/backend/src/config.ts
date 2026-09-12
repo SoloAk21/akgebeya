@@ -171,7 +171,15 @@ export function parseChapaConfig(environment:NodeJS.ProcessEnv){
  const result=chapaEnvironmentSchema.safeParse(values);
  if(!result.success)throw new Error('Invalid Chapa configuration');
  const c=result.data;
+ if(environment.NODE_ENV==='production'&&c.CHAPA_SECRET_KEY?.startsWith('CHASECK_TEST-'))throw new Error('Invalid Chapa configuration');
  return Object.freeze({secretKey:c.CHAPA_SECRET_KEY,baseUrl:c.CHAPA_BASE_URL,callbackUrl:c.CHAPA_CALLBACK_URL,returnUrl:c.CHAPA_RETURN_URL,timeoutMs:20000 as number});
 }
 export type ChapaConfig=ReturnType<typeof parseChapaConfig>;
 export function loadChapaConfig():ChapaConfig{loadEnvironment();return parseChapaConfig(process.env);}
+
+export function parseChapaWebhookConfig(environment:NodeJS.ProcessEnv){
+ const parsed=z.string().min(32).max(256).regex(/^[A-Za-z0-9_-]+$/).optional().safeParse(environment.CHAPA_WEBHOOK_SECRET?.trim()||undefined);
+ if(!parsed.success)throw new Error('Invalid Chapa webhook configuration');
+ return Object.freeze({secret:parsed.data});
+}
+export function loadChapaWebhookConfig(){loadEnvironment();return parseChapaWebhookConfig(process.env);}
