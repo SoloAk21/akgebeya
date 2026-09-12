@@ -1,3 +1,5 @@
+import {HttpChapaClient} from './payments/chapa-client.js';
+import {loadChapaConfig} from './config.js';
 import { GeminiListingAiClient } from './listings/gemini-client.js';
 import { loadGeminiConfig } from './config.js';
 import { ListingService } from './listings/service.js';
@@ -33,7 +35,9 @@ try {
   const phone = new PhoneOtpService(new PrismaPhoneOtpRepository(database), phoneTransport, phoneConfig, authConfig);
   const google = new GoogleAuthService(new GoogleVerifier(loadGoogleConfig()), new PrismaGoogleRepository(database), authConfig);
   const provider = new ProviderService(new PrismaProviderRepository(database), loadProviderConfig());
-  const listings = new ListingService(new PrismaListingRepository(database), new GeminiListingAiClient(loadGeminiConfig()));
+  const chapaConfig=loadChapaConfig();
+  const chapa=chapaConfig.secretKey&&chapaConfig.baseUrl&&chapaConfig.callbackUrl&&chapaConfig.returnUrl?new HttpChapaClient(chapaConfig):undefined;
+  const listings = new ListingService(new PrismaListingRepository(database), new GeminiListingAiClient(loadGeminiConfig()), chapa);
   const server = createServer(createApp(config, auth, telegram, phone, google, provider, listings));
   server.listen(config.port, config.host, () => {
     console.log(`Backend listening at http://${config.host}:${config.port}${config.apiPrefix}`);

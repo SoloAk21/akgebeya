@@ -33,7 +33,7 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
   `;
   assert.deepEqual(relations.map((row) => row.name).sort(), [
     'listing_fee_quotes_listingId_fkey', 'providers_userId_fkey', 'listings_providerId_fkey', 'listings_locationId_fkey',
-    'payments_userId_fkey', 'payments_listingId_fkey', 'sessions_userId_fkey',
+    'payments_feeQuoteId_fkey', 'payments_userId_fkey', 'payments_listingId_fkey', 'sessions_userId_fkey',
     'verifications_userId_fkey', 'verifications_reviewerId_fkey', 'media_uploadedById_fkey',
     'media_listingId_fkey', 'media_verificationId_fkey', 'referrals_referrerId_fkey',
     'referrals_referredUserId_fkey', 'notifications_userId_fkey',
@@ -51,14 +51,14 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
     JOIN pg_class t ON t.oid = i.indrelid JOIN pg_namespace n ON n.oid = t.relnamespace
     WHERE n.nspname = 'akgebeya' AND t.relname <> '_prisma_migrations'
   `;
-  assert.equal(indexes[0]?.count, 50);
+  assert.equal(indexes[0]?.count, 51);
   assert.equal(indexes[0]?.all_valid, true);
   const checks = await database.$queryRaw<{ count: number; all_valid: boolean }[]>`
     SELECT count(*)::int AS count, bool_and(c.convalidated) AS all_valid
     FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = 'akgebeya' AND c.contype = 'c'
   `;
-  assert.equal(checks[0]?.count, 40);
+  assert.equal(checks[0]?.count, 41);
   assert.equal(checks[0]?.all_valid, true);
 });
 

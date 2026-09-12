@@ -37,6 +37,8 @@ enum ProviderStatus {
 }
 
 enum ListingStatus {
+  VERIFY_PAYMENT
+  PAYMENT
   CALCULATE_FEE
   PREVIEW
   AI_ASSIST
@@ -243,7 +245,19 @@ model Location {
   @@map("locations")
 }
 
+enum PaymentInitializationStatus {
+  RESERVED
+  INITIALIZED
+  REJECTED
+  UNKNOWN
+}
+
 model Payment {
+  feeQuoteId String? @unique @db.Uuid
+  initializationStatus PaymentInitializationStatus?
+  sourceRevision String? @db.VarChar(66)
+  checkoutUrl String? @db.VarChar(2048)
+  feeQuote ListingFeeQuote? @relation(fields: [feeQuoteId], references: [id], onDelete: Restrict)
   id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId              String         @db.Uuid
   listingId           String?        @db.Uuid
@@ -387,8 +401,9 @@ model PhoneOtp {
   @@map("phone_otps")
 }
 
-// Immutable, non-expiring authoritative fee. Payment initiation is a later task.
+// Immutable, non-expiring authoritative fee; payment initialization binds to this quote.
 model ListingFeeQuote {
+  payment Payment?
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   listingId      String   @unique @db.Uuid
   amountMinor    BigInt   @db.BigInt

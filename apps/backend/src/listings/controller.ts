@@ -38,5 +38,20 @@ export function listingController(service:ListingService){
   const result=await service.calculateFee(authenticatedContext(req),String(req.params.listingId),match(req));
   res.set('ETag',result.etag).json(result);
  };
- return {create,mine,get,update,remove,aiAssist,preview,calculateFee,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
+ const payment:RequestHandler=async(req,res)=>{
+  validate(req,empty.optional(),idParams);
+  const result=await service.payment(authenticatedContext(req),String(req.params.listingId),match(req));
+  res.set('ETag',result.etag).json(result);
+ };
+ const verifyPayment:RequestHandler=async(req,res)=>{
+  validate(req,empty.optional(),idParams);
+  const result=await service.verifyPayment(authenticatedContext(req),String(req.params.listingId));
+  res.set('ETag',result.etag).json(result);
+ };
+ const publish:RequestHandler=async(req,res)=>{
+  validate(req,empty.optional(),idParams);
+  const result=await service.publish(authenticatedContext(req),String(req.params.listingId),match(req));
+  res.set('ETag',result.etag).json(result);
+ };
+ return {verifyPayment,publish,payment,create,mine,get,update,remove,aiAssist,preview,calculateFee,complete:transition('COMPLETE'),validate:transition('VALIDATE')};
 }

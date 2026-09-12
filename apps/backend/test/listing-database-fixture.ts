@@ -42,9 +42,9 @@ export async function withListingDatabaseFixture(run:(f:Fixture & {
     const rows=await db.listing.findMany({where:{providerId:{in:providerIds}},select:{id:true,locationId:true}});
     for(const row of rows)if(row.locationId)locations.add(row.locationId);
     const listingIds=rows.map(r=>r.id);
-    await db.payment.deleteMany({where:{listingId:{in:listingIds}}});
     await db.media.deleteMany({where:{listingId:{in:listingIds}}});
     await db.$transaction([
+     db.payment.deleteMany({where:{listingId:{in:listingIds}}}),
      db.listingFeeQuote.deleteMany({where:{listingId:{in:listingIds}}}),
      db.listing.deleteMany({where:{id:{in:listingIds}}}),
     ]);

@@ -21,12 +21,12 @@ test('Neon fee calculation atomically quotes one exact source revision, rolls ba
   }finally{await db.location.update({where:{id:location.id},data:{countryCode:location.countryCode,updatedAt:location.updatedAt}});}
   // Fail after quote and state writes but before transaction commit; exercise actual rollback.
   const failure=new Error('Controlled transaction failure');
-  const failing:ListingRepository={withProvider(userId,run){return repository.withProvider(userId,async store=>{await run(store);throw failure;});}};
+  const failing:ListingRepository={recordPaymentFailure:repository.recordPaymentFailure.bind(repository),withProvider(userId,run){return repository.withProvider(userId,async store=>{await run(store);throw failure;});}};
   await assert.rejects(()=>new ListingService(failing).calculateFee(owner,previewId,sourceRevision),e=>e===failure);
   assert.deepEqual(await db.listing.findUniqueOrThrow({where:{id:previewId}}),before);
   assert.equal(await db.listingFeeQuote.count({where:{listingId:previewId}}),0);
   const outcomes=await Promise.allSettled([s.calculateFee(owner,previewId,sourceRevision),s.calculateFee(owner,previewId,sourceRevision)]);
-  assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.ok(outcomes.some(r=>r.status==='rejected'&&denied('PRECONDITION_FAILED')(r.reason)));
+  assert.equal(outcomes.filter(r=>r.status==='fulfilled').length,1);assert.ok(outcomes.some(r=>r.status==='rejected'&&denied('PRECONDITION_FAILED')(r.reason)), 'Concurrent fee rejection codes: '+outcomes.filter(r=>r.status==='rejected').map(r=>{const e=r.reason as {code?:unknown;meta?:{code?:unknown}};const code=String(e?.code??'UNKNOWN');const sql=String(e?.meta?.code??'');return /^[A-Z0-9_]+$/.test(code)?code+(/^[0-9A-Z]{5}$/.test(sql)?'/'+sql:''):'UNKNOWN';}).join(','));
   const quotes=await db.listingFeeQuote.findMany({where:{listingId:previewId}});assert.equal(quotes.length,1);const quote=quotes[0]!;
   assert.equal(quote.amountMinor,50000n);assert.equal(quote.currency,'ETB');assert.equal(quote.pricingVersion,'v1');assert.equal(quote.sourceRevision,sourceRevision);
   const current=await s.get(owner,previewId);assert.equal(current.status,'CALCULATE_FEE');assert.ok('fee' in current);assert.deepEqual(current.fee,{amountMinor:'50000',currency:'ETB',pricingVersion:'v1'});

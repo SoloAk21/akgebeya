@@ -191,3 +191,17 @@ Deferred triggers enforce quote/state agreement at commit; publication and
 bilingual checks extend to CALCULATE_FEE. Existing records and schema objects
 remain unchanged. Counts are 12 application tables, 50 indexes and 40 CHECKs.
 No Payment row is created. See [Listing fee](LISTING_FEE.md).
+
+## Chapa payment initiation (Step 4.11)
+
+One new migration adds PAYMENT and four nullable Payment initialization fields,
+keeping legacy payments intact. Unique feeQuoteId binds one immutable reservation
+to its authoritative quote. Binding guards, initialization checks and deferred
+listing/payment/quote consistency protect the three-phase flow. PAYMENT stays
+unpublished and retains bilingual completeness requirements. There are 51
+application indexes, 41 CHECKs and 16 foreign keys. Prisma remains 6.12.0.
+See [Chapa payment initiation](CHAPA_PAYMENT_INITIATION.md).
+
+## Payment verification and publication (Steps 4.12-4.13)
+
+One new migration adds VERIFY_PAYMENT and updates scoped payment/publication checks and triggers. No tables, columns, indexes or data are added/changed. Existing counts remain 12 tables, 51 indexes, 41 CHECKs and 16 foreign keys. Quote-bound success requires paidAt and cannot be downgraded; publication requires the bound successful payment. See [verification/publication](PAYMENT_VERIFICATION_PUBLICATION.md).

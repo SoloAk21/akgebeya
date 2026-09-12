@@ -52,8 +52,8 @@ test('Neon AI_ASSIST and PREVIEW require bilingual content and preserve publicat
         await reject({ publishedAt: new Date() });
       }
       await reject({ status: 'PUBLISHED', publishedAt: null });
-      await tx.listing.update({ where: { id: row.id }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
-      await reject({ deletedAt: new Date() });
+      // Paid publication now requires VERIFY_PAYMENT and bound authoritative success.
+      await reject({status:'PUBLISHED',publishedAt:new Date()});
       throw rollback;
     }, { timeout: 120_000, maxWait: 10_000 });
   } catch (error) { if (error !== rollback) throw error; }

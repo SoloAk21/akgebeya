@@ -159,3 +159,19 @@ export function parseGeminiConfig(environment: NodeJS.ProcessEnv) {
 }
 export type GeminiConfig = ReturnType<typeof parseGeminiConfig>;
 export function loadGeminiConfig(): GeminiConfig { loadEnvironment(); return parseGeminiConfig(process.env); }
+
+const chapaUrl=z.string().url().refine(value=>{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.hash;});
+const chapaEnvironmentSchema=z.object({
+ CHAPA_SECRET_KEY:z.string().trim().min(16).max(4096).regex(/^[A-Za-z0-9_-]+$/).optional(),
+ CHAPA_BASE_URL:z.literal('https://api.chapa.co/v1').optional(),
+ CHAPA_CALLBACK_URL:chapaUrl.optional(),CHAPA_RETURN_URL:chapaUrl.optional(),
+});
+export function parseChapaConfig(environment:NodeJS.ProcessEnv){
+ const values=Object.fromEntries(['CHAPA_SECRET_KEY','CHAPA_BASE_URL','CHAPA_CALLBACK_URL','CHAPA_RETURN_URL'].map(k=>[k,environment[k]?.trim()||undefined]));
+ const result=chapaEnvironmentSchema.safeParse(values);
+ if(!result.success)throw new Error('Invalid Chapa configuration');
+ const c=result.data;
+ return Object.freeze({secretKey:c.CHAPA_SECRET_KEY,baseUrl:c.CHAPA_BASE_URL,callbackUrl:c.CHAPA_CALLBACK_URL,returnUrl:c.CHAPA_RETURN_URL,timeoutMs:20000 as number});
+}
+export type ChapaConfig=ReturnType<typeof parseChapaConfig>;
+export function loadChapaConfig():ChapaConfig{loadEnvironment();return parseChapaConfig(process.env);}

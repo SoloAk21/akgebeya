@@ -1,0 +1,3095 @@
+{
+  "info": {
+    "name": "AkGebeya Steps 4.12-4.13 Payment Verification and Paid Publication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Private server verification and paid publication. No callback proof, no new payment, no raw credentials. Use a temporary initialized test listing; local runner uses a deterministic gateway."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if(!pm.variables.get('ownerToken') && pm.variables.get('fixtureUrl')){",
+          "pm.sendRequest({url:pm.variables.get('fixtureUrl')+'/credentials',method:'POST',header:{Authorization:'Bearer '+pm.variables.get('fixtureKey')}},(e,r)=>{if(e||r.code!==200)throw new Error('Private fixture unavailable');const d=r.json();Object.entries(d.tokens).forEach(([k,v])=>pm.variables.set(k+'Token',v));pm.variables.set('id',d.nonDraftId);});",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1/listings"
+    },
+    {
+      "key": "id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Read initialized listing",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{id}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200; {\"listing\":{\"status\":\"PAYMENT\",\"etag\":\"<quoted revision>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Lifecycle',()=>pm.expect(result.status).to.eql('PAYMENT'));",
+              "pm.variables.set('revision',result.etag);",
+              "pm.variables.set('initialRevision',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "GET",
+            "url": "{{baseUrl}}/{{id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Expected HTTP 200; {\"listing\":{\"status\":\"PAYMENT\",\"etag\":\"<quoted revision>\"}}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listing\": {\n    \"status\": \"PAYMENT\",\n    \"etag\": \"<quoted revision>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unauthenticated payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [],
+        "description": "Expected HTTP 401; {\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(401));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('UNAUTHORIZED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [],
+            "description": "Expected HTTP 401; {\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "401",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "admin denied payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "spare denied payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{spareToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{spareToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "rejected denied payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rejectedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rejectedToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "suspended denied payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{suspendedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{suspendedToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "roleless denied payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rolelessToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rolelessToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "other denied payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 404; {\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(404));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 404; {\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "404",
+          "code": 404,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject amountMinor on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"amountMinor\":1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amountMinor\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject currency on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"currency\":\"USD\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currency\":\"USD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject tx_ref on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tx_ref\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tx_ref\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject status on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"SUCCEEDED\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"SUCCEEDED\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject userId on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"userId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject providerId on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"providerId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"providerId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject listingId on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"listingId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"listingId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject feeQuoteId on payment/verify",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"feeQuoteId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"feeQuoteId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unauthenticated publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [],
+        "description": "Expected HTTP 401; {\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(401));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('UNAUTHORIZED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [],
+            "description": "Expected HTTP 401; {\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "401",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "admin denied publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "spare denied publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{spareToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{spareToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "rejected denied publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rejectedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rejectedToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "suspended denied publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{suspendedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{suspendedToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "roleless denied publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rolelessToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(403));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{rolelessToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 403; {\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "403",
+          "code": 403,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "other denied publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 404; {\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(404));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 404; {\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "404",
+          "code": 404,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject amountMinor on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"amountMinor\":1}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amountMinor\":1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject currency on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"currency\":\"USD\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"currency\":\"USD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject tx_ref on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"tx_ref\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"tx_ref\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject status on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"SUCCEEDED\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"SUCCEEDED\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject userId on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"userId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"userId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject providerId on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"providerId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"providerId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject listingId on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"listingId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"listingId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Reject feeQuoteId on publish",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"feeQuoteId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"feeQuoteId\":\"injected\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Unpaid publication denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 409; {\"error\":{\"code\":\"LISTING_TRANSITION_CONFLICT\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(409));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 409; {\"error\":{\"code\":\"LISTING_TRANSITION_CONFLICT\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "409",
+          "code": 409,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Pending gateway payment",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Local deterministic gateway simulation. Expected HTTP 200 {\"listingId\":\"<UUID>\",\"status\":\"PAYMENT\",\"payment\":{\"status\":\"PENDING\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":null},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "pm.test('Unpublished',()=>{pm.expect(data.status).to.eql('PAYMENT');pm.expect(data.publishedAt).to.eql(null);pm.expect(data.payment.status).to.eql('PENDING');pm.expect(data.payment.paidAt).to.eql(null);});"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Local deterministic gateway simulation. Expected HTTP 200 {\"listingId\":\"<UUID>\",\"status\":\"PAYMENT\",\"payment\":{\"status\":\"PENDING\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":null},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+          },
+          "code": 200,
+          "status": "200",
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"PAYMENT\",\n  \"payment\": {\n    \"status\": \"PENDING\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": null\n  },\n  \"publishedAt\": null,\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Failed gateway payment",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Local deterministic gateway simulation. Expected HTTP 200 {\"listingId\":\"<UUID>\",\"status\":\"PAYMENT\",\"payment\":{\"status\":\"FAILED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":null},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "pm.test('Unpublished',()=>{pm.expect(data.status).to.eql('PAYMENT');pm.expect(data.publishedAt).to.eql(null);pm.expect(data.payment.status).to.eql('FAILED');pm.expect(data.payment.paidAt).to.eql(null);});"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Local deterministic gateway simulation. Expected HTTP 200 {\"listingId\":\"<UUID>\",\"status\":\"PAYMENT\",\"payment\":{\"status\":\"FAILED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":null},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+          },
+          "code": 200,
+          "status": "200",
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"PAYMENT\",\n  \"payment\": {\n    \"status\": \"FAILED\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": null\n  },\n  \"publishedAt\": null,\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Gateway amount mismatch",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Local deterministic gateway simulation. Expected HTTP 502 {\"error\":{\"code\":\"PAYMENT_VERIFICATION_MISMATCH\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(502));",
+              "const data=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PAYMENT_VERIFICATION_MISMATCH'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Local deterministic gateway simulation. Expected HTTP 502 {\"error\":{\"code\":\"PAYMENT_VERIFICATION_MISMATCH\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "code": 502,
+          "status": "502",
+          "body": "{\n  \"error\": {\n    \"code\": \"PAYMENT_VERIFICATION_MISMATCH\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Gateway network ambiguity",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Local deterministic gateway simulation. Expected HTTP 502 {\"error\":{\"code\":\"PAYMENT_VERIFICATION_UNAVAILABLE\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(502));",
+              "const data=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PAYMENT_VERIFICATION_UNAVAILABLE'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Local deterministic gateway simulation. Expected HTTP 502 {\"error\":{\"code\":\"PAYMENT_VERIFICATION_UNAVAILABLE\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "code": 502,
+          "status": "502",
+          "body": "{\n  \"error\": {\n    \"code\": \"PAYMENT_VERIFICATION_UNAVAILABLE\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Verify authoritative payment",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"VERIFY_PAYMENT\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Lifecycle',()=>pm.expect(result.status).to.eql('VERIFY_PAYMENT'));",
+              "pm.test('Authoritative success',()=>{pm.expect(result.payment.status).to.eql('SUCCEEDED');pm.expect(result.payment.amountMinor).to.eql('50000');pm.expect(result.payment.currency).to.eql('ETB');pm.expect(result.payment.paidAt).to.be.a('string');});",
+              "pm.test('Publication state',()=>pm.expect(Boolean(result.publishedAt)).to.eql(false));",
+              "pm.variables.set('revision',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"VERIFY_PAYMENT\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"VERIFY_PAYMENT\",\n  \"payment\": {\n    \"status\": \"SUCCEEDED\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": \"<server timestamp>\"\n  },\n  \"publishedAt\": null,\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Duplicate verification",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"VERIFY_PAYMENT\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Lifecycle',()=>pm.expect(result.status).to.eql('VERIFY_PAYMENT'));",
+              "pm.test('Authoritative success',()=>{pm.expect(result.payment.status).to.eql('SUCCEEDED');pm.expect(result.payment.amountMinor).to.eql('50000');pm.expect(result.payment.currency).to.eql('ETB');pm.expect(result.payment.paidAt).to.be.a('string');});",
+              "pm.test('Publication state',()=>pm.expect(Boolean(result.publishedAt)).to.eql(false));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"VERIFY_PAYMENT\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":null,\"etag\":\"<quoted revision>\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"VERIFY_PAYMENT\",\n  \"payment\": {\n    \"status\": \"SUCCEEDED\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": \"<server timestamp>\"\n  },\n  \"publishedAt\": null,\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Publication missing If-Match",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 428; {\"error\":{\"code\":\"PRECONDITION_REQUIRED\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(428));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PRECONDITION_REQUIRED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Expected HTTP 428; {\"error\":{\"code\":\"PRECONDITION_REQUIRED\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "428",
+          "code": 428,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PRECONDITION_REQUIRED\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Publication malformed If-Match",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "invalid"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "invalid"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Publication stale If-Match",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{initialRevision}}"
+          }
+        ],
+        "description": "Expected HTTP 412; {\"error\":{\"code\":\"PRECONDITION_FAILED\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(412));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('PRECONDITION_FAILED'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{initialRevision}}"
+              }
+            ],
+            "description": "Expected HTTP 412; {\"error\":{\"code\":\"PRECONDITION_FAILED\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "412",
+          "code": 412,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"PRECONDITION_FAILED\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Publish verified listing",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"PUBLISHED\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":\"<server timestamp>\",\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Lifecycle',()=>pm.expect(result.status).to.eql('PUBLISHED'));",
+              "pm.test('Authoritative success',()=>{pm.expect(result.payment.status).to.eql('SUCCEEDED');pm.expect(result.payment.amountMinor).to.eql('50000');pm.expect(result.payment.currency).to.eql('ETB');pm.expect(result.payment.paidAt).to.be.a('string');});",
+              "pm.test('Publication state',()=>pm.expect(Boolean(result.publishedAt)).to.eql(true));",
+              "pm.variables.set('revision',result.etag);"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"PUBLISHED\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":\"<server timestamp>\",\"etag\":\"<quoted revision>\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"PUBLISHED\",\n  \"payment\": {\n    \"status\": \"SUCCEEDED\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": \"<server timestamp>\"\n  },\n  \"publishedAt\": \"<server timestamp>\",\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Repeated publication",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 409; {\"error\":{\"code\":\"LISTING_TRANSITION_CONFLICT\",\"message\":\"<safe fixed message>\"}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(409));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              }
+            ],
+            "description": "Expected HTTP 409; {\"error\":{\"code\":\"LISTING_TRANSITION_CONFLICT\",\"message\":\"<safe fixed message>\"}}"
+          },
+          "status": "409",
+          "code": 409,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    },
+    {
+      "name": "Verify after publication",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/payment/verify",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"PUBLISHED\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":\"<server timestamp>\",\"etag\":\"<quoted revision>\"}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(200));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Lifecycle',()=>pm.expect(result.status).to.eql('PUBLISHED'));",
+              "pm.test('Authoritative success',()=>{pm.expect(result.payment.status).to.eql('SUCCEEDED');pm.expect(result.payment.amountMinor).to.eql('50000');pm.expect(result.payment.currency).to.eql('ETB');pm.expect(result.payment.paidAt).to.be.a('string');});",
+              "pm.test('Publication state',()=>pm.expect(Boolean(result.publishedAt)).to.eql(true));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "POST",
+            "url": "{{baseUrl}}/{{id}}/payment/verify",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "description": "Expected HTTP 200; {\"listingId\":\"<UUID>\",\"status\":\"PUBLISHED\",\"payment\":{\"status\":\"SUCCEEDED\",\"amountMinor\":\"50000\",\"currency\":\"ETB\",\"paidAt\":\"<server timestamp>\"},\"publishedAt\":\"<server timestamp>\",\"etag\":\"<quoted revision>\"}"
+          },
+          "status": "200",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"listingId\": \"<UUID>\",\n  \"status\": \"PUBLISHED\",\n  \"payment\": {\n    \"status\": \"SUCCEEDED\",\n    \"amountMinor\": \"50000\",\n    \"currency\": \"ETB\",\n    \"paidAt\": \"<server timestamp>\"\n  },\n  \"publishedAt\": \"<server timestamp>\",\n  \"etag\": \"<quoted revision>\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Direct publication PATCH denied",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{id}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"PUBLISHED\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('HTTP status',()=>pm.response.to.have.status(400));",
+              "const data=pm.response.json();",
+              "const result=data.listing||data;",
+              "pm.test('Safe error',()=>pm.expect(data.error.code).to.eql('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": [
+        {
+          "name": "Expected safe shape",
+          "originalRequest": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/{{id}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "If-Match",
+                "value": "{{revision}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Expected HTTP 400; {\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"<safe fixed message>\"}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"PUBLISHED\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "status": "400",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<safe fixed message>\"\n  }\n}"
+        }
+      ]
+    }
+  ]
+}

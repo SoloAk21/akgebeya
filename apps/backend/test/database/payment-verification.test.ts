@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {randomUUID} from 'node:crypto';
+import {withPaymentDatabaseFixture} from '../payment-database-fixture.js';
+import {PaymentVerificationService} from '../../src/payments/verification-service.js';
+import {HttpError} from '../../src/errors.js';
+import {previewFacts} from '../preview-database-fixture.js';
+import type {ListingRepository} from '../../src/listings/types.js';
+import type {VerifiedTransaction} from '../../src/payments/verification-client.js';
+const denied=(code:string)=>(e:unknown)=>e instanceof HttpError&&e.code===code;
+test('Neon reconciliation/publication: outcomes, bindings, concurrency, rollback and preservation',async()=>{
+ await withPaymentDatabaseFixture(async f=>{
+  const {db,actors,repository,paymentService:s}=f,owner=actors.owner.context,id=f.paymentListingId;
+  const before=await db.listing.findUniqueOrThrow({where:{id}}),quote=await db.listingFeeQuote.findUniqueOrThrow({where:{listingId:id}});
+  await s.payment(owner,id,(await s.get(owner,id)).etag);
+  let mode:'success'|'pending'|'failed'|'mismatch'|'network'='pending',calls=0;
+  const verifier={async verify(txRef:string):Promise<VerifiedTransaction>{calls++;await repository.withProvider(owner.user.id,async()=>{});if(mode==='network')throw new Error('Private upstream error');return {status:mode==='mismatch'?'success':mode,txRef,amountMinor:mode==='mismatch'?1n:50000n,currency:'ETB'};}};
+  const service=new PaymentVerificationService(repository,verifier);
+  for(const name of ['admin','spare','rejected','suspended','roleless'] as const)await assert.rejects(()=>service.verify(actors[name].context,id),denied('FORBIDDEN'));
+  await assert.rejects(()=>service.verify(actors.other.context,id),denied('LISTING_NOT_FOUND'));
+  await assert.rejects(()=>service.publish(owner,id,undefined),denied('PRECONDITION_REQUIRED'));
+  await assert.rejects(async()=>service.publish(owner,id,(await s.get(owner,id)).etag),denied('LISTING_TRANSITION_CONFLICT'));
+  const initial=await db.payment.findFirstOrThrow({where:{listingId:id}});
+  for(const outcome of ['pending','failed','mismatch','network'] as const){mode=outcome;
+   if(outcome==='mismatch'||outcome==='network')await assert.rejects(()=>service.verify(owner,id),denied(outcome==='mismatch'?'PAYMENT_VERIFICATION_MISMATCH':'PAYMENT_VERIFICATION_UNAVAILABLE'));
+   else await service.verify(owner,id);
+   const p=await db.payment.findUniqueOrThrow({where:{id:initial.id}}),l=await db.listing.findUniqueOrThrow({where:{id}});
+   assert.notEqual(p.status,'SUCCEEDED');assert.equal(p.paidAt,null);assert.equal(l.status,'PAYMENT');assert.equal(l.publishedAt,null);
+  }
+  mode='success';const both=await Promise.all([service.verify(owner,id),service.verify(owner,id)]);assert.ok(both.every(r=>r.payment.status==='SUCCEEDED'));
+  const paid=await db.payment.findUniqueOrThrow({where:{id:initial.id}}),count=calls;
+  assert.deepEqual(await service.verify(owner,id),both[0]);assert.equal(calls,count);assert.ok(paid.paidAt);
+  assert.equal((await db.listing.findUniqueOrThrow({where:{id}})).publishedAt,null);
+  const broken:ListingRepository={recordPaymentFailure:repository.recordPaymentFailure.bind(repository),withProvider(userId,run){return repository.withProvider(userId,async store=>{await run(store);throw new Error('Controlled rollback');});}};
+  const revision=(await s.get(owner,id)).etag;
+  await assert.rejects(()=>new PaymentVerificationService(broken).publish(owner,id,revision));
+  assert.equal((await db.listing.findUniqueOrThrow({where:{id}})).status,'VERIFY_PAYMENT');
+  assert.equal((await db.listing.findUniqueOrThrow({where:{id}})).publishedAt,null);
+  for(const name of ['spare','rejected','suspended','roleless','other'] as const)await assert.rejects(()=>service.publish(actors[name].context,id,revision),denied(name==='other'?'LISTING_NOT_FOUND':'FORBIDDEN'));
+  await db.$executeRaw`UPDATE akgebeya.providers SET status='SUSPENDED' WHERE id=${before.providerId}::uuid`;await assert.rejects(()=>service.publish(owner,id,revision),denied('FORBIDDEN'));
+  await db.$executeRaw`UPDATE akgebeya.providers SET status='ACTIVE' WHERE id=${before.providerId}::uuid`;
+  await assert.rejects(()=>service.publish(owner,id,'"'+'0'.repeat(64)+'"'),denied('PRECONDITION_FAILED'));
+  const publications=await Promise.allSettled([service.publish(owner,id,revision),service.publish(owner,id,revision)]);assert.equal(publications.filter(r=>r.status==='fulfilled').length,1);
+  const published=await db.listing.findUniqueOrThrow({where:{id}});assert.equal(published.status,'PUBLISHED');assert.ok(published.publishedAt);
+  assert.deepEqual(previewFacts({...published,publishedAt:null}),previewFacts(before));assert.deepEqual(await db.listingFeeQuote.findUniqueOrThrow({where:{id:quote.id}}),quote);
+  assert.equal(await db.payment.count({where:{listingId:id}}),1);assert.deepEqual(await db.payment.findUniqueOrThrow({where:{id:paid.id}}),paid);
+  assert.equal((await service.verify(owner,id)).status,'PUBLISHED');
+  await assert.rejects(async()=>service.publish(owner,id,(await s.get(owner,id)).etag),denied('LISTING_TRANSITION_CONFLICT'));
+  for(const action of [()=>db.listing.update({where:{id},data:{deletedAt:new Date()}}),()=>db.payment.update({where:{id:paid.id},data:{status:'FAILED',paidAt:null}}),()=>db.payment.update({where:{id:paid.id},data:{paidAt:new Date(0)}}),()=>db.listing.update({where:{id},data:{publishedAt:new Date(0)}}),()=>db.payment.delete({where:{id:paid.id}})])await assert.rejects(action);
+  for(const state of ['RESERVED','UNKNOWN'] as const){
+   const otherId=await f.createQuoted(),q=await db.listingFeeQuote.findUniqueOrThrow({where:{listingId:otherId}}),rev=(await s.get(owner,otherId)).etag;
+   const p=await db.payment.create({data:{userId:owner.user.id,listingId:otherId,feeQuoteId:q.id,amountMinor:50000n,currency:'ETB',initializationStatus:state,sourceRevision:rev,gatewayReference:randomUUID(),idempotencyKey:randomUUID()}});
+   await assert.rejects(()=>db.listing.update({where:{id:otherId},data:{status:'PUBLISHED',publishedAt:new Date()}}));
+   let phase=0;const rollback:ListingRepository={recordPaymentFailure:repository.recordPaymentFailure.bind(repository),withProvider(userId,run){return repository.withProvider(userId,async store=>{const value=await run(store);if(++phase===2)throw new Error('Controlled verification rollback');return value;});}};
+   await assert.rejects(()=>new PaymentVerificationService(rollback,verifier).verify(owner,otherId));
+   assert.equal((await db.payment.findUniqueOrThrow({where:{id:p.id}})).status,'PENDING');assert.equal((await db.listing.findUniqueOrThrow({where:{id:otherId}})).status,'CALCULATE_FEE');
+   assert.equal((await service.verify(owner,otherId)).status,'VERIFY_PAYMENT');const after=await db.payment.findUniqueOrThrow({where:{id:p.id}});
+   assert.equal(after.initializationStatus,state);assert.equal(after.checkoutUrl,null);assert.equal(after.status,'SUCCEEDED');assert.equal(await db.payment.count({where:{listingId:otherId}}),1);
+  }
+ },{async initialize(){return {checkoutUrl:'https://checkout.chapa.co/checkout/payment/local-verification-fixture'};}});
+});

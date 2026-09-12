@@ -7,6 +7,9 @@ import type { DraftRecord,DraftStore,ListingRepository,ListingRow } from './type
 const include={location:true,_count:{select:{payments:true,media:true}}} as const;
 export class PrismaListingRepository implements ListingRepository {
  constructor(private readonly db:PrismaClient){}
+ async recordPaymentFailure(id:string,outcome:'REJECTED'|'UNKNOWN'){
+  await this.db.payment.updateMany({where:{id,initializationStatus:'RESERVED'},data:{initializationStatus:outcome,status:outcome==='REJECTED'?'FAILED':'PENDING'}});
+ }
  withProvider<T>(userId:string,run:(store:DraftStore)=>Promise<T>):Promise<T>{
   return retryTransaction(()=>this.db.$transaction(async tx=>{
    await tx.$executeRawUnsafe("SET LOCAL lock_timeout = '5s'");
@@ -43,6 +46,25 @@ export class PrismaListingRepository implements ListingRepository {
      await tx.$executeRaw`UPDATE akgebeya.listings SET "updatedAt"=GREATEST(clock_timestamp(),${current.revision}::timestamptz+interval '1 microsecond') WHERE id=${current.id}::uuid`;
    }
    return run({provider,
+    findPayment:async listingId=>{
+     await tx.$queryRaw`SELECT id FROM akgebeya.payments WHERE "listingId"=${listingId}::uuid FOR UPDATE`;
+     return tx.payment.findFirst({where:{listingId},orderBy:{createdAt:'asc'}});
+    },
+    settlePayment:async(id,status)=>{
+     await tx.$executeRaw`UPDATE akgebeya.payments SET status=${status}::akgebeya."PaymentStatus", "paidAt"=CASE WHEN ${status}='SUCCEEDED' THEN GREATEST(clock_timestamp(),"createdAt") ELSE NULL END,"updatedAt"=clock_timestamp() WHERE id=${id}::uuid AND status<>'SUCCEEDED'`;
+     return tx.payment.findUniqueOrThrow({where:{id}});
+    },
+    publish:async current=>{
+     const changed=await tx.$executeRaw`UPDATE akgebeya.listings SET status='PUBLISHED',"publishedAt"=clock_timestamp() WHERE id=${current.id}::uuid AND "providerId"=${providerId}::uuid AND status::text='VERIFY_PAYMENT' AND "publishedAt" IS NULL AND "deletedAt" IS NULL`;
+     if(changed!==1)throw new HttpError('LISTING_TRANSITION_CONFLICT');
+     await advance(current);
+     return (await revisions([await tx.listing.findUniqueOrThrow({where:{id:current.id},include})]))[0]!;
+    },
+    reservePayment:async input=>tx.payment.create({data:{...input,gateway:'CHAPA',status:'PENDING',initializationStatus:'RESERVED'}}),
+    initializePayment:async(id,checkoutUrl)=>{
+     const changed=await tx.payment.updateMany({where:{id,initializationStatus:'RESERVED',status:'PENDING'},data:{initializationStatus:'INITIALIZED',checkoutUrl}});
+     if(changed.count!==1)throw new HttpError('LISTING_TRANSITION_CONFLICT');
+    },
     create:async input=>{
      if(!providerId)throw new HttpError('FORBIDDEN');
      const row=await tx.listing.create({data:{...await data(input),providerId,status:'DRAFT'},include});

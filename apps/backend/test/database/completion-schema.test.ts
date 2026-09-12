@@ -6,7 +6,7 @@ import { Prisma } from '../../src/generated/prisma/client.js';
 const db=createDatabaseClient();after(()=>db.$disconnect());
 test('Neon completion statuses preserve legacy values and enforce unpublished complete/validated listings',async()=>{
  const labels=await db.$queryRaw<{enumlabel:string}[]>`SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname='akgebeya' AND t.typname='ListingStatus'`;
- assert.deepEqual(labels.map(x=>x.enumlabel).sort(),['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','CALCULATE_FEE','PUBLISHED','PAUSED','ARCHIVED'].sort());
+ assert.deepEqual(labels.map(x=>x.enumlabel).sort(),['VERIFY_PAYMENT','DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','CALCULATE_FEE','PAYMENT','PUBLISHED','PAUSED','ARCHIVED'].sort());
  const rollback=new Error('ROLLBACK_COMPLETION_SCHEMA');
  try{await db.$transaction(async tx=>{
   const user=await tx.user.create({data:{email:randomUUID()+'@example.com',displayName:'Completion schema fixture'}});
@@ -25,8 +25,8 @@ test('Neon completion statuses preserve legacy values and enforce unpublished co
    if(status!=='DRAFT')await reject({titleEn:null});
   }
   await reject({status:'PUBLISHED',publishedAt:null});
-  await tx.listing.update({where:{id:row.id},data:{status:'PUBLISHED',publishedAt:new Date()}});
-  await reject({deletedAt:new Date()});
+  // Paid publication now requires VERIFY_PAYMENT and bound authoritative success.
+  await reject({status:'PUBLISHED',publishedAt:new Date()});
   throw rollback;
  },{timeout:60000,maxWait:10000});}catch(e){if(e!==rollback)throw e;}
 });

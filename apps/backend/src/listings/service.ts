@@ -1,3 +1,7 @@
+import {PaymentVerificationService} from '../payments/verification-service.js';
+import type {ChapaVerificationClient} from '../payments/verification-client.js';
+import {PaymentInitiationService} from '../payments/service.js';
+import type {ChapaClient} from '../payments/client.js';
 import { listingAiInput, parseAiOutput, type ListingAiClient } from './ai.js';
 import { listingFeeV1,feeView } from './fee.js';
 import { assertComplete } from './completion.js';
@@ -32,7 +36,18 @@ function previewView(row:DraftRecord,provider:NonNullable<DraftStore['provider']
  }:null,provider:{id:provider.id,role:provider.role,nameEn:provider.nameEn,nameAm:provider.nameAm}};
 }
 export class ListingService {
- constructor(private readonly repository:ListingRepository,private readonly ai?:ListingAiClient){}
+ constructor(private readonly repository:ListingRepository,private readonly ai?:ListingAiClient,private readonly chapa?:ChapaClient & Partial<ChapaVerificationClient>){}
+ async verifyPayment(context:AuthContext,id:string){
+  const verifier=this.chapa?.verify?{verify:this.chapa.verify.bind(this.chapa)}:undefined;
+  return new PaymentVerificationService(this.repository,verifier).verify(context,id);
+ }
+ async publish(context:AuthContext,id:string,match:string|undefined){
+  return new PaymentVerificationService(this.repository).publish(context,id,match);
+ }
+ async payment(context:AuthContext,id:string,match:string|undefined){
+  if(!this.chapa)throw new HttpError('SERVICE_UNAVAILABLE');
+  return new PaymentInitiationService(this.repository,this.chapa).initiate(context,id,match);
+ }
  private run<T>(context:AuthContext,work:(store:DraftStore)=>Promise<T>){
   return this.repository.withProvider(context.user.id,async store=>{
    verifiedProviderId(context,store.provider,Object.values(ProviderRole));
@@ -47,8 +62,8 @@ export class ListingService {
   if(!z.string().uuid().safeParse(id).success)throw new HttpError('BAD_REQUEST');
   return this.run(context,async store=>{
    const row=await store.get(id);
-   if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','CALCULATE_FEE'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');
-   if(row.status==='CALCULATE_FEE'){
+   if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST','PREVIEW','CALCULATE_FEE','PAYMENT','VERIFY_PAYMENT','PUBLISHED'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');
+   if(['CALCULATE_FEE','PAYMENT','VERIFY_PAYMENT','PUBLISHED'].includes(row.status)){
     const quote=await store.findFeeQuote(id);
     if(!quote)throw new HttpError('LISTING_TRANSITION_CONFLICT');
     return {...previewView(row,store.provider!),fee:feeView(quote)};

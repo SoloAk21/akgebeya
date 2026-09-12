@@ -1,6 +1,11 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  PAYMENT_VERIFICATION_UNAVAILABLE:{status:502,message:'Payment verification is unavailable'},
+  PAYMENT_VERIFICATION_MISMATCH:{status:502,message:'Payment verification could not confirm the expected transaction'},
+  PAYMENT_INITIALIZATION_REJECTED: {status:502,message:'Payment initialization was rejected'},
+  PAYMENT_INITIALIZATION_UNKNOWN: {status:502,message:'Payment initialization outcome is unresolved'},
+
   AI_UNAVAILABLE: { status: 503, message: 'Listing assistance is unavailable' },
   AI_TIMEOUT: { status: 504, message: 'Listing assistance timed out' },
   AI_RATE_LIMITED: { status: 429, message: 'Listing assistance is busy; try later' },

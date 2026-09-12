@@ -1,0 +1,2 @@
+# Preserve exact applied SQL bytes and recognize CRLF without relaxing other whitespace checks.
+apps/backend/prisma/migrations/**/migration.sql -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
