@@ -3,7 +3,7 @@ import { HttpError } from '../errors.js';
 import { retryTransaction, isLockFailure } from '../auth/transaction-retry.js';
 import type { ProviderInput, ProviderRecord, ProviderRepository, ProviderStore } from './types.js';
 
-async function record(tx: Pick<Prisma.TransactionClient, 'provider' | 'verification'>, selector: { userId: string } | { id: string }): Promise<ProviderRecord | null> {
+export async function findProviderRecord(tx: Pick<Prisma.TransactionClient, 'provider' | 'verification'>, selector: { userId: string } | { id: string }): Promise<ProviderRecord | null> {
   const provider = await tx.provider.findUnique({ where: selector });
   if (!provider) return null;
   const review = await tx.verification.findFirst({
@@ -24,13 +24,13 @@ export class PrismaProviderRepository implements ProviderRepository {
       throw error;
     }
   }
-  findOwned(userId: string) { return record(this.db, { userId }); }
+  findOwned(userId: string) { return findProviderRecord(this.db, { userId }); }
   withProvider<T>(selector: { userId: string } | { id: string }, run: (store: ProviderStore) => Promise<T>): Promise<T> {
     return retryTransaction(() => this.db.$transaction(async tx => {
       await tx.$executeRawUnsafe("SET LOCAL lock_timeout = '5s'");
       const where = 'id' in selector ? Prisma.sql`"id" = ${selector.id}::uuid` : Prisma.sql`"userId" = ${selector.userId}::uuid`;
       await tx.$queryRaw`SELECT id FROM "akgebeya"."providers" WHERE ${where} FOR UPDATE`;
-      const current = await record(tx, selector);
+      const current = await findProviderRecord(tx, selector);
       if (!current) throw new HttpError('PROVIDER_NOT_FOUND');
       const userId = current.userId;
       return run({
@@ -60,7 +60,7 @@ export class PrismaProviderRepository implements ProviderRepository {
           if (changed.count !== 1) throw new HttpError('PROVIDER_CONFLICT');
         },
         setStatus: async status => { await tx.provider.update({ where: { id: current.id }, data: { status } }); },
-        reload: async () => (await record(tx, selector))!,
+        reload: async () => (await findProviderRecord(tx, selector))!,
       });
     }, { timeout: 15_000, maxWait: 10_000 }), isLockFailure);
   }

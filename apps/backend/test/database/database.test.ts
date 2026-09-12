@@ -57,7 +57,7 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
     FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = 'akgebeya' AND c.contype = 'c'
   `;
-  assert.equal(checks[0]?.count, 33);
+  assert.equal(checks[0]?.count, 36);
   assert.equal(checks[0]?.all_valid, true);
 });
 
@@ -103,7 +103,7 @@ test('all ten models support related records; database rejects invalid writes; f
       const location = await tx.location.create({ data: { regionEn: 'Addis Ababa', cityEn: 'Addis Ababa', cityAm: 'አዲስ አበባ' } });
       const listing = await tx.listing.create({ data: {
         providerId: provider.id, locationId: location.id, titleEn: 'Test home', titleAm: 'ቤት',
-        descriptionEn: 'Database fixture', type: 'RENT', propertyType: 'APARTMENT', price: new Prisma.Decimal('1250.50'),
+        descriptionEn: 'Database fixture', category: 'RESIDENTIAL', type: 'RENT', propertyType: 'APARTMENT', price: new Prisma.Decimal('1250.50'),
       } });
       const payment = await tx.payment.create({ data: { userId: buyer.id, listingId: listing.id, idempotencyKey: marker, amountMinor: 125050n } });
       const expiresAt = new Date(Date.now() + 3_600_000);
@@ -116,6 +116,7 @@ test('all ten models support related records; database rejects invalid writes; f
       await tx.referral.create({ data: { referrerId: owner.id, referredUserId: buyer.id } });
       await tx.notification.create({ data: { userId: buyer.id, titleEn: 'Test', bodyEn: 'Test notification', titleAm: 'ሙከራ' } });
       const related = await tx.listing.findUniqueOrThrow({ where: { id: listing.id }, include: { provider: { include: { user: true } }, location: true, payments: true } });
+      assert.ok(related.location && related.price);
       assert.equal(related.provider.user.id, owner.id);
       assert.equal(related.location.cityAm, 'አዲስ አበባ');
       assert.equal(related.titleEn, 'Test home');

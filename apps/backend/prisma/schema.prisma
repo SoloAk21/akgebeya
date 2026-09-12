@@ -46,14 +46,33 @@ enum ListingStatus {
 enum ListingType {
   SALE
   RENT
+  BUY_REQUEST
+  RENT_REQUEST
+}
+
+enum PropertyCategory {
+  RESIDENTIAL
+  COMMERCIAL
+  LAND
 }
 
 enum PropertyType {
+  STUDIO
   APARTMENT
+  CONDOMINIUM
+  VILLA
   HOUSE
-  LAND
-  COMMERCIAL
-  OTHER
+  G_PLUS_1
+  G_PLUS_2
+  OFFICE
+  SHOP
+  WAREHOUSE
+  BUILDING
+  HOTEL
+  INDUSTRIAL_LAND
+  AGRICULTURAL_LAND
+  RESIDENTIAL_LAND
+  COMMERCIAL_LAND
 }
 
 enum Currency {
@@ -163,16 +182,17 @@ model Provider {
 
 model Listing {
   id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category      PropertyCategory?
   providerId    String        @db.Uuid
-  locationId    String        @db.Uuid
-  titleEn       String        @db.VarChar(200)
+  locationId    String?        @db.Uuid
+  titleEn       String?        @db.VarChar(200)
   titleAm       String?       @db.VarChar(200)
-  descriptionEn String        @db.Text
+  descriptionEn String?        @db.Text
   descriptionAm String?       @db.Text
-  type          ListingType
-  propertyType  PropertyType
+  type          ListingType?
+  propertyType  PropertyType?
   status        ListingStatus @default(DRAFT)
-  price         Decimal       @db.Decimal(18, 2)
+  price         Decimal?       @db.Decimal(18, 2)
   currency      Currency      @default(ETB)
   bedrooms      Int?          @db.SmallInt
   bathrooms     Int?          @db.SmallInt
@@ -183,7 +203,7 @@ model Listing {
   deletedAt     DateTime?     @db.Timestamptz(6)
 
   provider Provider  @relation(fields: [providerId], references: [id], onDelete: Restrict)
-  location Location  @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  location Location?  @relation(fields: [locationId], references: [id], onDelete: Restrict)
   payments Payment[]
   media    Media[]
 

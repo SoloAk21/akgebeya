@@ -60,8 +60,8 @@ npm run db:status --workspace apps/backend
 npm run test:database --workspace apps/backend
 ```
 
-The health check does not query the database. Payment logic, listing services,
-frontend/bot code and Google OAuth are not implemented.
+The health check does not query the database. Payment logic and frontend/bot
+code are not implemented.
 
 ## Authentication (Steps 4.1–4.2)
 
@@ -97,3 +97,9 @@ See [Google setup and curl/Postman/real-login verification](docs/GOOGLE_AUTH.md)
 Provider profiles, review requests, ADMIN decisions and provider authorization are
 documented in [Provider verification](docs/PROVIDER_VERIFICATION.md).
 The new migration preserves legacy null roles and existing authentication data.
+
+## Listing drafts (Step 4.6)
+
+Verified active providers can create, read, update and soft-delete private drafts.
+Partial fields remain NULL, and updates require an ETag to prevent lost edits.
+See [Listing drafts, curl/Postman and Neon verification](docs/LISTING_DRAFTS.md).

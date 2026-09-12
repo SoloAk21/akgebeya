@@ -1,0 +1,1415 @@
+{
+  "info": {
+    "name": "AkGebeya Listing Draft Foundation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Private local Step 4.6 verification. Run sequentially with isolated fixtures; never sync/export populated session variables."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1/listings"
+    },
+    {
+      "key": "fixtureUrl",
+      "value": ""
+    },
+    {
+      "key": "fixtureKey",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.variables.get('ownerToken')) {",
+          "pm.sendRequest({url:pm.variables.get('fixtureUrl')+'/credentials',method:'POST',header:{Authorization:'Bearer '+pm.variables.get('fixtureKey')}},function(error,response){",
+          "if(error || response.code!==200) throw new Error('Private fixture unavailable');",
+          "const data=response.json();Object.keys(data.tokens).forEach(name=>pm.variables.set(name+'Token',data.tokens[name]));pm.variables.set('nonDraftId',data.nonDraftId);",
+          "});",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Unauthenticated",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 401.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Authentication required\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(401));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "No provider",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Unverified provider",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{spareToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Rejected provider",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rejectedToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Suspended provider",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{suspendedToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Roleless provider",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rolelessToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Empty draft",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listing\": {\n    \"id\": \"<uuid>\",\n    \"category\": \"<selected category or null>\",\n    \"type\": \"<selected purpose or null>\",\n    \"propertyType\": \"<selected type or null>\",\n    \"titleEn\": \"<supplied value or null>\",\n    \"titleAm\": \"<supplied value or null>\",\n    \"descriptionEn\": \"<supplied value or null>\",\n    \"descriptionAm\": \"<supplied value or null>\",\n    \"price\": \"<decimal string or null>\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": \"<supplied location object or null>\",\n    \"status\": \"DRAFT\",\n    \"createdAt\": \"<timestamp>\",\n    \"updatedAt\": \"<timestamp>\",\n    \"etag\": \"\\\"<opaque revision>\\\"\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(201));",
+              "const body=pm.response.json();",
+              "pm.test('DRAFT only with ETag',()=>{pm.expect(body.listing.status).to.equal('DRAFT');pm.expect(body.listing).not.to.have.property('payments');pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag);});",
+              "pm.test('Genuine NULL draft fields',()=>['category','type','propertyType','titleEn','titleAm','descriptionEn','descriptionAm','location','price'].forEach(k=>pm.expect(body.listing[k]).to.equal(null)));",
+              "pm.variables.set('draftId',body.listing.id);",
+              "pm.variables.set('etag',body.listing.etag);",
+              "pm.variables.set('initialEtag',body.listing.etag);"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Category-only draft",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"LAND\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listing\": {\n    \"id\": \"<uuid>\",\n    \"category\": \"<selected category or null>\",\n    \"type\": \"<selected purpose or null>\",\n    \"propertyType\": \"<selected type or null>\",\n    \"titleEn\": \"<supplied value or null>\",\n    \"titleAm\": \"<supplied value or null>\",\n    \"descriptionEn\": \"<supplied value or null>\",\n    \"descriptionAm\": \"<supplied value or null>\",\n    \"price\": \"<decimal string or null>\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": \"<supplied location object or null>\",\n    \"status\": \"DRAFT\",\n    \"createdAt\": \"<timestamp>\",\n    \"updatedAt\": \"<timestamp>\",\n    \"etag\": \"\\\"<opaque revision>\\\"\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(201));",
+              "const body=pm.response.json();",
+              "pm.test('DRAFT only with ETag',()=>{pm.expect(body.listing.status).to.equal('DRAFT');pm.expect(body.listing).not.to.have.property('payments');pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag);});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Purpose-only draft",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\":\"RENT_REQUEST\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listing\": {\n    \"id\": \"<uuid>\",\n    \"category\": \"<selected category or null>\",\n    \"type\": \"<selected purpose or null>\",\n    \"propertyType\": \"<selected type or null>\",\n    \"titleEn\": \"<supplied value or null>\",\n    \"titleAm\": \"<supplied value or null>\",\n    \"descriptionEn\": \"<supplied value or null>\",\n    \"descriptionAm\": \"<supplied value or null>\",\n    \"price\": \"<decimal string or null>\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": \"<supplied location object or null>\",\n    \"status\": \"DRAFT\",\n    \"createdAt\": \"<timestamp>\",\n    \"updatedAt\": \"<timestamp>\",\n    \"etag\": \"\\\"<opaque revision>\\\"\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(201));",
+              "const body=pm.response.json();",
+              "pm.test('DRAFT only with ETag',()=>{pm.expect(body.listing.status).to.equal('DRAFT');pm.expect(body.listing).not.to.have.property('payments');pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag);});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Compatible property type",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"COMMERCIAL\",\"propertyType\":\"OFFICE\",\"type\":\"RENT\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listing\": {\n    \"id\": \"<uuid>\",\n    \"category\": \"<selected category or null>\",\n    \"type\": \"<selected purpose or null>\",\n    \"propertyType\": \"<selected type or null>\",\n    \"titleEn\": \"<supplied value or null>\",\n    \"titleAm\": \"<supplied value or null>\",\n    \"descriptionEn\": \"<supplied value or null>\",\n    \"descriptionAm\": \"<supplied value or null>\",\n    \"price\": \"<decimal string or null>\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": \"<supplied location object or null>\",\n    \"status\": \"DRAFT\",\n    \"createdAt\": \"<timestamp>\",\n    \"updatedAt\": \"<timestamp>\",\n    \"etag\": \"\\\"<opaque revision>\\\"\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(201));",
+              "const body=pm.response.json();",
+              "pm.test('DRAFT only with ETag',()=>{pm.expect(body.listing.status).to.equal('DRAFT');pm.expect(body.listing).not.to.have.property('payments');pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag);});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Incompatible property type",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"LAND\",\"propertyType\":\"HOUSE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Invalid category",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"INVALID\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Removed property type",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"propertyType\":\"LAND\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Invalid purpose",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"type\":\"INVALID\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Invalid body",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[]",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Publication escalation",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"PUBLISHED\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Completion escalation",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"COMPLETE\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Own draft",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listing\": {\n    \"id\": \"<uuid>\",\n    \"category\": \"<selected category or null>\",\n    \"type\": \"<selected purpose or null>\",\n    \"propertyType\": \"<selected type or null>\",\n    \"titleEn\": \"<supplied value or null>\",\n    \"titleAm\": \"<supplied value or null>\",\n    \"descriptionEn\": \"<supplied value or null>\",\n    \"descriptionAm\": \"<supplied value or null>\",\n    \"price\": \"<decimal string or null>\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": \"<supplied location object or null>\",\n    \"status\": \"DRAFT\",\n    \"createdAt\": \"<timestamp>\",\n    \"updatedAt\": \"<timestamp>\",\n    \"etag\": \"\\\"<opaque revision>\\\"\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('DRAFT only with ETag',()=>{pm.expect(body.listing.status).to.equal('DRAFT');pm.expect(body.listing).not.to.have.property('payments');pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag);});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Own drafts",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/mine",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listings\": \"<4 owned DRAFT objects>\",\n  \"limit\": 20,\n  \"offset\": 0\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Private draft collection',()=>{pm.expect(body.listings.length).to.equal(4);body.listings.forEach(l=>pm.expect(l.status).to.equal('DRAFT'));});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Other provider read",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "description": "Expected HTTP 404.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"Listing not found\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Other provider update",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Unauthorized\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 404.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"Listing not found\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Other provider delete",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "description": "Expected HTTP 404.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"Listing not found\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Missing precondition",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Missing precondition\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 428.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"PRECONDITION_REQUIRED\",\n    \"message\": \"If-Match is required\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(428));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"PRECONDITION_REQUIRED\",\"message\":\"If-Match is required\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Update own draft",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Draft home\",\"titleAm\":\"ቤት\",\"descriptionAm\":\"መግለጫ\",\"category\":\"RESIDENTIAL\",\"propertyType\":\"APARTMENT\",\"price\":\"1234.50\",\"location\":{\"regionEn\":\"Addis Ababa\",\"cityEn\":\"Addis Ababa\"}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listing\": {\n    \"id\": \"<uuid>\",\n    \"category\": \"<selected category or null>\",\n    \"type\": \"<selected purpose or null>\",\n    \"propertyType\": \"<selected type or null>\",\n    \"titleEn\": \"<supplied value or null>\",\n    \"titleAm\": \"<supplied value or null>\",\n    \"descriptionEn\": \"<supplied value or null>\",\n    \"descriptionAm\": \"<supplied value or null>\",\n    \"price\": \"<decimal string or null>\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": null,\n    \"bathrooms\": null,\n    \"areaSqm\": null,\n    \"location\": \"<supplied location object or null>\",\n    \"status\": \"DRAFT\",\n    \"createdAt\": \"<timestamp>\",\n    \"updatedAt\": \"<timestamp>\",\n    \"etag\": \"\\\"<opaque revision>\\\"\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('DRAFT only with ETag',()=>{pm.expect(body.listing.status).to.equal('DRAFT');pm.expect(body.listing).not.to.have.property('payments');pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag);});",
+              "pm.variables.set('etag',body.listing.etag);"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Stale edit",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{initialEtag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Stale value\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 412.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"PRECONDITION_FAILED\",\n    \"message\": \"Listing changed; retrieve it again\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(412));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"PRECONDITION_FAILED\",\"message\":\"Listing changed; retrieve it again\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Incompatible merged update",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"LAND\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid request\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid request\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Unverified mutation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{spareToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Denied\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Rejected mutation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rejectedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Denied\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Suspended mutation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{suspendedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Denied\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 403.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Access denied\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Non-DRAFT mutation",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{nonDraftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Denied\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 409.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"LISTING_CONFLICT\",\n    \"message\": \"Listing is not an editable draft\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(409));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"LISTING_CONFLICT\",\"message\":\"Listing is not an editable draft\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Soft-delete draft",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "description": "Expected HTTP 200.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"status\": \"ok\"\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Soft deletion',()=>pm.expect(body).to.deep.equal({status:'ok'}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Deleted draft read",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 404.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"Listing not found\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Deleted draft update",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{draftId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{etag}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"titleEn\":\"Denied\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 404.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"Listing not found\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body).to.deep.equal({\"error\":{\"code\":\"LISTING_NOT_FOUND\",\"message\":\"Listing not found\"}}));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Own drafts after deletion",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/mine",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200.\nExpected JSON (placeholders represent server-generated or previously supplied fields):\n{\n  \"listings\": \"<3 owned DRAFT objects>\",\n  \"limit\": 20,\n  \"offset\": 0\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Expected status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Private draft collection',()=>{pm.expect(body.listings.length).to.equal(3);body.listings.forEach(l=>pm.expect(l.status).to.equal('DRAFT'));});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    }
+  ]
+}

@@ -26,6 +26,12 @@ export function providerView(provider: ProviderRecord, at: Date) {
       reviewedAt: review?.reviewedAt ?? null, expiresAt: review?.expiresAt ?? null },
   };
 }
+export function verifiedProviderId(context:AuthContext, provider:ProviderRecord|null, allowedRoles:readonly ProviderRole[], expectedProviderId?:string, at=new Date()) {
+  if (!provider || provider.userId !== context.user.id || (expectedProviderId !== undefined && expectedProviderId !== provider.id)
+    || !provider.role || !allowedRoles.includes(provider.role) || !providerView(provider,at).verification.verified) throw new HttpError('FORBIDDEN');
+  return provider.id;
+}
+
 export class ProviderService {
   constructor(private readonly repository: ProviderRepository, private readonly config: ProviderConfig,
     private readonly now: () => Date = () => new Date()) {}
@@ -68,8 +74,6 @@ export class ProviderService {
   }
   async requireVerified(context: AuthContext, allowedRoles: readonly ProviderRole[], expectedProviderId?: string) {
     const provider = await this.repository.findOwned(context.user.id);
-    if (!provider || provider.userId !== context.user.id || (expectedProviderId !== undefined && expectedProviderId !== provider.id)
-      || !provider.role || !allowedRoles.includes(provider.role) || !providerView(provider, this.now()).verification.verified) throw new HttpError('FORBIDDEN');
-    return provider.id;
+    return verifiedProviderId(context,provider,allowedRoles,expectedProviderId,this.now());
   }
 }

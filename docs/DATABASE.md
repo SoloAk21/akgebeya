@@ -148,3 +148,14 @@ See [Google authentication](GOOGLE_AUTH.md) for verification and account conflic
 Provider profiles, review requests, ADMIN decisions and provider authorization are
 documented in [Provider verification](PROVIDER_VERIFICATION.md).
 The new migration preserves legacy null roles and existing authentication data.
+
+## Listing draft migration (Step 4.6)
+
+The new listing_draft_foundation migration requires an empty listings table and
+replaces the property taxonomy without changing existing applied migrations.
+Draft details become nullable; category/type compatibility, supplied content,
+finite positive prices/dimensions, non-DRAFT completeness and draft publication
+safety are enforced by CHECK constraints. All existing indexes/FKs remain.
+There are 48 application indexes and 36 CHECK constraints.
+See [Listing drafts](LISTING_DRAFTS.md) for the exact taxonomy, concurrency contract,
+preservation checks and rollback-isolated live database tests.

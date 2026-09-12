@@ -1,3 +1,5 @@
+import { ListingService } from './listings/service.js';
+import { PrismaListingRepository } from './listings/repository.js';
 import { ProviderService } from './providers/service.js';
 import { PrismaProviderRepository } from './providers/repository.js';
 import { loadProviderConfig } from './config.js';
@@ -29,7 +31,8 @@ try {
   const phone = new PhoneOtpService(new PrismaPhoneOtpRepository(database), phoneTransport, phoneConfig, authConfig);
   const google = new GoogleAuthService(new GoogleVerifier(loadGoogleConfig()), new PrismaGoogleRepository(database), authConfig);
   const provider = new ProviderService(new PrismaProviderRepository(database), loadProviderConfig());
-  const server = createServer(createApp(config, auth, telegram, phone, google, provider));
+  const listings = new ListingService(new PrismaListingRepository(database));
+  const server = createServer(createApp(config, auth, telegram, phone, google, provider, listings));
   server.listen(config.port, config.host, () => {
     console.log(`Backend listening at http://${config.host}:${config.port}${config.apiPrefix}`);
   });

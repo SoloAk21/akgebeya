@@ -1,3 +1,5 @@
+import { listingRouter } from './listings/routes.js';
+import type { ListingService } from './listings/service.js';
 import { providerRouter } from './providers/routes.js';
 import type { ProviderService } from './providers/service.js';
 import type { GoogleAuthService } from './auth/google-service.js';
@@ -11,12 +13,12 @@ import helmet from 'helmet';
 import type { AppConfig } from './config.js';
 import { errorHandler, notFound } from './errors.js';
 
-export function createApp(config: AppConfig, auth: AuthService, telegram?: TelegramAuthService, phone?: PhoneOtpService, google?: GoogleAuthService, provider?: ProviderService) {
+export function createApp(config: AppConfig, auth: AuthService, telegram?: TelegramAuthService, phone?: PhoneOtpService, google?: GoogleAuthService, provider?: ProviderService, listings?: ListingService) {
   const app = express();
   app.set('env', config.nodeEnv);
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin: [...config.corsOrigins], methods: ['GET', 'HEAD', 'POST'], allowedHeaders: ['Authorization', 'Content-Type'] }));
+  app.use(cors({ origin: [...config.corsOrigins], methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'], allowedHeaders: ['Authorization', 'Content-Type', 'If-Match'], exposedHeaders: ['ETag'] }));
   app.use(express.json({ limit: '16kb' }));
 
   app.get(`${config.apiPrefix}/health`, (_request, response) => {
@@ -25,6 +27,7 @@ export function createApp(config: AppConfig, auth: AuthService, telegram?: Teleg
 
   app.use(`${config.apiPrefix}/auth`, authRouter(auth, telegram, phone, google));
   if (provider) app.use(config.apiPrefix, providerRouter(auth, provider));
+  if (listings && provider) app.use(config.apiPrefix + '/listings', listingRouter(auth,provider,listings));
   app.use(notFound);
   app.use(errorHandler);
   return app;

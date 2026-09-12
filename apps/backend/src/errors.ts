@@ -1,6 +1,10 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  LISTING_NOT_FOUND: { status: 404, message: 'Listing not found' },
+  LISTING_CONFLICT: { status: 409, message: 'Listing is not an editable draft' },
+  PRECONDITION_REQUIRED: { status: 428, message: 'If-Match is required' },
+  PRECONDITION_FAILED: { status: 412, message: 'Listing changed; retrieve it again' },
   PROVIDER_CONFLICT: { status: 409, message: 'Provider state conflicts with this request' },
   PROVIDER_NOT_FOUND: { status: 404, message: 'Provider profile not found' },
   ACCOUNT_LINKING_CONFLICT: { status: 409, message: 'Account linking required' },
