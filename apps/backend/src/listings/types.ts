@@ -1,3 +1,4 @@
+import type { ListingAiOutput } from './ai.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { ProviderRecord } from '../providers/types.js';
 import type { DraftInput } from './input.js';
@@ -8,6 +9,7 @@ export interface DraftStore {
  create(input:DraftInput):Promise<DraftRecord>;
  get(id:string,lock?:boolean):Promise<DraftRecord|null>;
  transition(current:DraftRecord,target:'COMPLETE'|'VALIDATE'):Promise<DraftRecord>;
+ saveAi(current:DraftRecord,output:ListingAiOutput):Promise<DraftRecord>;
  mine(limit:number,offset:number):Promise<DraftRecord[]>;
  update(current:DraftRecord,input:DraftInput,remove:boolean):Promise<DraftRecord>;
 }

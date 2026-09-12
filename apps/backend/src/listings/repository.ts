@@ -58,6 +58,15 @@ export class PrismaListingRepository implements ListingRepository {
      const row=await tx.listing.findUniqueOrThrow({where:{id:current.id},include});
      return (await revisions([row]))[0]!;
     },
+    saveAi:async(current,output)=>{
+     const {titleEn,titleAm,descriptionEn,descriptionAm}=output;
+     const changed=await tx.listing.updateMany({where:{id:current.id,providerId,status:'VALIDATE',deletedAt:null,publishedAt:null},
+      data:{titleEn,titleAm,descriptionEn,descriptionAm,status:'AI_ASSIST'}});
+     if(changed.count!==1)throw new HttpError('LISTING_TRANSITION_CONFLICT');
+     await advance(current);
+     const row=await tx.listing.findUniqueOrThrow({where:{id:current.id},include});
+     return (await revisions([row]))[0]!;
+    },
     update:async(current,input,remove)=>{
      const patch=remove?{deletedAt:new Date()}:await data(input);
      const result=await tx.listing.updateMany({where:{id:current.id,providerId,status:'DRAFT',deletedAt:null},data:patch});

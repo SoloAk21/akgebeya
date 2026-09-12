@@ -9,7 +9,8 @@ Authentication and the existing verified-provider authorization protect these
 routes. The service rechecks ownership, role, current approval and ACTIVE provider
 status inside the provider-locked transaction. ADMIN has no provider bypass.
 Other providers and missing/deleted IDs return 404. Step 4.7 also permits owned
-COMPLETE/VALIDATE reads; other non-DRAFT reads return 404. Mutation of an
+COMPLETE/VALIDATE reads; [Step 4.8](LISTING_AI_ASSIST.md) adds owned AI_ASSIST
+reads. Other non-DRAFT reads return 404. Mutation of an
 owned non-DRAFT record returns 409. Reads also require current provider authorization.
 
 Controllers handle HTTP, services own validation/business rules, and repositories

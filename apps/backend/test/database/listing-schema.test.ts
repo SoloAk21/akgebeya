@@ -18,7 +18,7 @@ test('Neon listing taxonomy, nullable fields, checks, indexes and foreign keys m
  const indexes=await db.$queryRaw<{indexname:string}[]>`SELECT indexname FROM pg_indexes WHERE schemaname='akgebeya' AND tablename='listings'`;
  assert.deepEqual(indexes.map(i=>i.indexname).sort(),['listings_pkey','listings_providerId_status_createdAt_idx','listings_locationId_status_idx','listings_status_type_propertyType_price_idx','listings_status_publishedAt_idx'].sort());
  const checks=await db.$queryRaw<{conname:string}[]>`SELECT conname FROM pg_constraint WHERE conrelid='akgebeya.listings'::regclass AND contype='c' AND convalidated`;
- assert.deepEqual(checks.map(c=>c.conname).sort(),['listings_content_check','listings_price_check','listings_dimensions_check','listings_category_type_check','listings_non_draft_complete_check','listings_publication_check','listings_draft_publication_check'].sort());
+ assert.deepEqual(checks.map(c=>c.conname).sort(),['listings_content_check','listings_price_check','listings_dimensions_check','listings_category_type_check','listings_non_draft_complete_check','listings_publication_check','listings_draft_publication_check','listings_ai_assist_content_check'].sort());
  const fks=await db.$queryRaw<{conname:string}[]>`SELECT conname FROM pg_constraint WHERE conrelid='akgebeya.listings'::regclass AND contype='f' AND convalidated`;
  assert.deepEqual(fks.map(f=>f.conname).sort(),['listings_providerId_fkey','listings_locationId_fkey'].sort());
 });

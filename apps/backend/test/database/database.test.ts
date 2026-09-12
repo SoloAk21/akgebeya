@@ -57,7 +57,7 @@ test('Neon contains all application tables, UUID primary keys, timezone timestam
     FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE n.nspname = 'akgebeya' AND c.contype = 'c'
   `;
-  assert.equal(checks[0]?.count, 36);
+  assert.equal(checks[0]?.count, 37);
   assert.equal(checks[0]?.all_valid, true);
 });
 

@@ -1,3 +1,4 @@
+import { listingAiInput, parseAiOutput, type ListingAiClient } from './ai.js';
 import { assertComplete } from './completion.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -22,7 +23,7 @@ function precondition(id:string,match:string|undefined){
   if(!/^"[a-f0-9]{64}"$/.test(match))throw new HttpError('BAD_REQUEST');
 }
 export class ListingService {
- constructor(private readonly repository:ListingRepository){}
+ constructor(private readonly repository:ListingRepository,private readonly ai?:ListingAiClient){}
  private run<T>(context:AuthContext,work:(store:DraftStore)=>Promise<T>){
   return this.repository.withProvider(context.user.id,async store=>{
    verifiedProviderId(context,store.provider,Object.values(ProviderRole));
@@ -35,7 +36,7 @@ export class ListingService {
  }
  async get(context:AuthContext,id:string){
   if(!z.string().uuid().safeParse(id).success)throw new HttpError('BAD_REQUEST');
-  return this.run(context,async store=>{const row=await store.get(id);if(!row||!['DRAFT','COMPLETE','VALIDATE'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');return view(row);});
+  return this.run(context,async store=>{const row=await store.get(id);if(!row||!['DRAFT','COMPLETE','VALIDATE','AI_ASSIST'].includes(row.status))throw new HttpError('LISTING_NOT_FOUND');return view(row);});
  }
  async mine(context:AuthContext,query:unknown){
   const input=pagination.safeParse(query);if(!input.success)throw new HttpError('BAD_REQUEST');
@@ -53,6 +54,36 @@ export class ListingService {
     throw new HttpError('LISTING_TRANSITION_CONFLICT');
    assertComplete(row);
    return view(await store.transition(row,target));
+  });
+ }
+ async aiAssist(context:AuthContext,id:string,match:string|undefined){
+  precondition(id,match);
+  const check=(row:DraftRecord|null):DraftRecord=>{
+   if(!row)throw new HttpError('LISTING_NOT_FOUND');
+   if(etag(row)!==match)throw new HttpError('PRECONDITION_FAILED');
+   if(row.status!=='VALIDATE'||row.publishedAt!==null||row._count.payments>0||row._count.media>0)
+    throw new HttpError('LISTING_TRANSITION_CONFLICT');
+   assertComplete(row);
+   return row;
+  };
+  const snapshot=await this.run(context,async store=>{
+   const row=check(await store.get(id,true)),input=listingAiInput(row);
+   return {input,source:JSON.stringify(input)};
+  });
+  // The provider/listing transaction has committed before this network call.
+  if(!this.ai)throw new HttpError('AI_UNAVAILABLE');
+  let raw:unknown;
+  try{raw=await this.ai.generate(snapshot.input);}
+  catch(error){
+   if(error instanceof HttpError&&['AI_UNAVAILABLE','AI_TIMEOUT','AI_RATE_LIMITED','AI_OUTPUT_INVALID'].includes(error.code))throw error;
+   throw new HttpError('AI_UNAVAILABLE');
+  }
+  const output=parseAiOutput(raw);
+  return this.run(context,async store=>{
+   const row=check(await store.get(id,true));
+   // A shared location can change without changing the listing revision.
+   if(JSON.stringify(listingAiInput(row))!==snapshot.source)throw new HttpError('PRECONDITION_FAILED');
+   return view(await store.saveAi(row,output));
   });
  }
  async update(context:AuthContext,id:string,body:unknown,match:string|undefined,remove=false){

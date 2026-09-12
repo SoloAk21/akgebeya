@@ -1,0 +1,958 @@
+{
+  "info": {
+    "name": "AkGebeya Step 4.8 Listing AI Assist",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run sequentially using local unsynced session variables. Two-phase generation; no keys in collection. Successful generation calls the configured backend Gemini model. Error simulations run in the separate development verifier."
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.variables.get('ownerToken')) {",
+          "pm.sendRequest({url:pm.variables.get('fixtureUrl')+'/credentials',method:'POST',header:{Authorization:'Bearer '+pm.variables.get('fixtureKey')}},function(error,response){",
+          "if(error || response.code!==200) throw new Error('Private fixture unavailable');",
+          "const data=response.json();Object.keys(data.tokens).forEach(name=>pm.variables.set(name+'Token',data.tokens[name]));",
+          "});",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000/api/v1/listings"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create test draft",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"category\":\"RESIDENTIAL\",\"type\":\"SALE\",\"propertyType\":\"HOUSE\",\"titleEn\":\"House for sale in Addis Ababa\",\"descriptionEn\":\"House in Addis Ababa.\",\"price\":\"100.00\",\"bedrooms\":2,\"bathrooms\":1,\"areaSqm\":\"80.00\",\"location\":{\"regionEn\":\"Addis Ababa\",\"cityEn\":\"Addis Ababa\"}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 201. Expected JSON shape:\n{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"DRAFT\",\n    \"etag\": \"<quoted revision>\",\n    \"titleEn\": \"<English text>\",\n    \"titleAm\": null,\n    \"descriptionEn\": \"<English text>\",\n    \"descriptionAm\": null,\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"areaSqm\": \"80.00\",\n    \"location\": \"<unchanged stored location>\",\n    \"createdAt\": \"<UTC>\",\n    \"updatedAt\": \"<UTC>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 201) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(201));",
+              "const body=pm.response.json();",
+              "pm.test('Expected lifecycle',()=>pm.expect(body.listing.status).to.equal('DRAFT'));",
+              "pm.test('ETag matches body',()=>pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag));",
+              "pm.variables.set('id',body.listing.id);",
+              "pm.variables.set('revision',body.listing.etag);",
+              "pm.variables.set('initialRevision',body.listing.etag);",
+              "const facts=((({titleEn,titleAm,descriptionEn,descriptionAm,status,updatedAt,etag,...rest})=>rest)(body.listing));",
+              "if(!pm.variables.get('listingFacts'))pm.variables.set('listingFacts',JSON.stringify(facts));else pm.test('Facts unchanged',()=>pm.expect(facts).to.deep.equal(JSON.parse(pm.variables.get('listingFacts'))));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Unauthenticated",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [],
+        "description": "Expected HTTP 401. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 401) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(401));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('UNAUTHORIZED'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "admin denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 403) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "spare denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{spareToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 403) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "rejected denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rejectedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 403) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "suspended denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{suspendedToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 403) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "roleless denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{rolelessToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 403. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 403) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(403));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('FORBIDDEN'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Other provider denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 404. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 404) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('LISTING_NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "DRAFT denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 409. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 409) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(409));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Complete fixture",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/complete",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200. Expected JSON shape:\n{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"COMPLETE\",\n    \"etag\": \"<quoted revision>\",\n    \"titleEn\": \"<English text>\",\n    \"titleAm\": null,\n    \"descriptionEn\": \"<English text>\",\n    \"descriptionAm\": null,\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"areaSqm\": \"80.00\",\n    \"location\": \"<unchanged stored location>\",\n    \"createdAt\": \"<UTC>\",\n    \"updatedAt\": \"<UTC>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 200) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Expected lifecycle',()=>pm.expect(body.listing.status).to.equal('COMPLETE'));",
+              "pm.test('ETag matches body',()=>pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag));",
+              "pm.variables.set('revision',body.listing.etag);",
+              "const facts=((({titleEn,titleAm,descriptionEn,descriptionAm,status,updatedAt,etag,...rest})=>rest)(body.listing));",
+              "if(!pm.variables.get('listingFacts'))pm.variables.set('listingFacts',JSON.stringify(facts));else pm.test('Facts unchanged',()=>pm.expect(facts).to.deep.equal(JSON.parse(pm.variables.get('listingFacts'))));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "COMPLETE denied",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 409. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 409) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(409));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Validate fixture",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/validate",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 200. Expected JSON shape:\n{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"VALIDATE\",\n    \"etag\": \"<quoted revision>\",\n    \"titleEn\": \"<English text>\",\n    \"titleAm\": null,\n    \"descriptionEn\": \"<English text>\",\n    \"descriptionAm\": null,\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"areaSqm\": \"80.00\",\n    \"location\": \"<unchanged stored location>\",\n    \"createdAt\": \"<UTC>\",\n    \"updatedAt\": \"<UTC>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 200) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Expected lifecycle',()=>pm.expect(body.listing.status).to.equal('VALIDATE'));",
+              "pm.test('ETag matches body',()=>pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag));",
+              "pm.variables.set('revision',body.listing.etag);",
+              "const facts=((({titleEn,titleAm,descriptionEn,descriptionAm,status,updatedAt,etag,...rest})=>rest)(body.listing));",
+              "if(!pm.variables.get('listingFacts'))pm.variables.set('listingFacts',JSON.stringify(facts));else pm.test('Facts unchanged',()=>pm.expect(facts).to.deep.equal(JSON.parse(pm.variables.get('listingFacts'))));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Missing If-Match",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 428. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"PRECONDITION_REQUIRED\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 428) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(428));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('PRECONDITION_REQUIRED'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Malformed If-Match",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "*"
+          }
+        ],
+        "description": "Expected HTTP 400. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 400) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Stale If-Match",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{initialRevision}}"
+          }
+        ],
+        "description": "Expected HTTP 412. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"PRECONDITION_FAILED\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 412) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(412));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('PRECONDITION_FAILED'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Reject supplied price",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"price\":\"1\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 400) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Reject supplied status",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"AI_ASSIST\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 400) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Reject supplied providerId",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"providerId\":\"injected\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 400) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Reject supplied location",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"location\":{\"cityEn\":\"invented\"}}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 400) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Reject direct lifecycle PATCH",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/{{id}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"status\":\"AI_ASSIST\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Expected HTTP 400. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 400) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(400));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('BAD_REQUEST'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Real Gemini assistance",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 200. Expected JSON shape:\n{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"AI_ASSIST\",\n    \"etag\": \"<quoted revision>\",\n    \"titleEn\": \"<English text>\",\n    \"titleAm\": \"<Amharic text>\",\n    \"descriptionEn\": \"<English text>\",\n    \"descriptionAm\": \"<Amharic text>\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"areaSqm\": \"80.00\",\n    \"location\": \"<unchanged stored location>\",\n    \"createdAt\": \"<UTC>\",\n    \"updatedAt\": \"<UTC>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 200) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Expected lifecycle',()=>pm.expect(body.listing.status).to.equal('AI_ASSIST'));",
+              "pm.test('ETag matches body',()=>pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag));",
+              "pm.variables.set('revision',body.listing.etag);",
+              "const facts=((({titleEn,titleAm,descriptionEn,descriptionAm,status,updatedAt,etag,...rest})=>rest)(body.listing));",
+              "if(!pm.variables.get('listingFacts'))pm.variables.set('listingFacts',JSON.stringify(facts));else pm.test('Facts unchanged',()=>pm.expect(facts).to.deep.equal(JSON.parse(pm.variables.get('listingFacts'))));",
+              "pm.test('Bilingual content',()=>{for(const key of ['titleEn','titleAm','descriptionEn','descriptionAm'])pm.expect(body.listing[key]).to.be.a('string').and.not.empty;pm.expect(body.listing.titleEn.length).to.be.at.most(200);pm.expect(body.listing.titleAm.length).to.be.at.most(200);});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Repeated assistance",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/ai-assist",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 409. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"LISTING_TRANSITION_CONFLICT\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 409) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(409));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('LISTING_TRANSITION_CONFLICT'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Read assisted listing",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{id}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          }
+        ],
+        "description": "Expected HTTP 200. Expected JSON shape:\n{\n  \"listing\": {\n    \"id\": \"<UUID>\",\n    \"status\": \"AI_ASSIST\",\n    \"etag\": \"<quoted revision>\",\n    \"titleEn\": \"<English text>\",\n    \"titleAm\": \"<Amharic text>\",\n    \"descriptionEn\": \"<English text>\",\n    \"descriptionAm\": \"<Amharic text>\",\n    \"category\": \"RESIDENTIAL\",\n    \"type\": \"SALE\",\n    \"propertyType\": \"HOUSE\",\n    \"price\": \"100.00\",\n    \"currency\": \"ETB\",\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"areaSqm\": \"80.00\",\n    \"location\": \"<unchanged stored location>\",\n    \"createdAt\": \"<UTC>\",\n    \"updatedAt\": \"<UTC>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 200) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(200));",
+              "const body=pm.response.json();",
+              "pm.test('Expected lifecycle',()=>pm.expect(body.listing.status).to.equal('AI_ASSIST'));",
+              "pm.test('ETag matches body',()=>pm.expect(pm.response.headers.get('ETag')).to.equal(body.listing.etag));",
+              "const facts=((({titleEn,titleAm,descriptionEn,descriptionAm,status,updatedAt,etag,...rest})=>rest)(body.listing));",
+              "if(!pm.variables.get('listingFacts'))pm.variables.set('listingFacts',JSON.stringify(facts));else pm.test('Facts unchanged',()=>pm.expect(facts).to.deep.equal(JSON.parse(pm.variables.get('listingFacts'))));",
+              "pm.test('Bilingual content',()=>{for(const key of ['titleEn','titleAm','descriptionEn','descriptionAm'])pm.expect(body.listing[key]).to.be.a('string').and.not.empty;pm.expect(body.listing.titleEn.length).to.be.at.most(200);pm.expect(body.listing.titleAm.length).to.be.at.most(200);});"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Other provider cannot read assisted listing",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/{{id}}",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{otherToken}}"
+          }
+        ],
+        "description": "Expected HTTP 404. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"LISTING_NOT_FOUND\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 404) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('LISTING_NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "No publication action",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/{{id}}/publish",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{ownerToken}}"
+          },
+          {
+            "key": "If-Match",
+            "value": "{{revision}}"
+          }
+        ],
+        "description": "Expected HTTP 404. Expected JSON shape:\n{\n  \"error\": {\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"<fixed safe message>\"\n  }\n}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code !== 404) pm.execution.setNextRequest(null);",
+              "pm.test('Expected HTTP status',()=>pm.response.to.have.status(404));",
+              "const body=pm.response.json();",
+              "pm.test('Safe error',()=>pm.expect(body.error.code).to.equal('NOT_FOUND'));"
+            ]
+          }
+        }
+      ],
+      "response": []
+    }
+  ]
+}

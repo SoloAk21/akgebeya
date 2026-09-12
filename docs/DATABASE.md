@@ -166,3 +166,11 @@ One new migration adds COMPLETE/VALIDATE and requires unpublished DRAFT, COMPLET
 and VALIDATE rows. Existing statuses, columns, defaults, indexes, foreign keys,
 rows and the PUBLISHED constraint are preserved. Counts remain 48 indexes and
 36 CHECK constraints. See [Listing completion](LISTING_COMPLETION.md).
+
+## Listing AI assist migration (Step 4.8)
+
+One new migration adds AI_ASSIST and extends the unpublished-state CHECK.
+AI_ASSIST requires non-null Amharic title/description, alongside the existing
+nonblank and non-DRAFT completeness checks. Existing rows, columns, defaults,
+indexes/FKs and the PUBLISHED check remain unchanged. Counts are 48 indexes and
+37 CHECK constraints. See [Listing AI assist](LISTING_AI_ASSIST.md).

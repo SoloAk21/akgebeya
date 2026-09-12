@@ -13,5 +13,6 @@ export function listingRouter(auth:AuthService,provider:ProviderService,service:
  router.post('/',controller.create);router.get('/mine',controller.mine);router.get('/:listingId',controller.get);
  router.patch('/:listingId',controller.update);router.delete('/:listingId',controller.remove);
  router.post('/:listingId/complete',controller.complete);router.post('/:listingId/validate',controller.validate);
+ router.post('/:listingId/ai-assist',controller.aiAssist);
  return router;
 }

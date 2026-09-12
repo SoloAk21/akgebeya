@@ -1,6 +1,10 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 
 const safeErrors = {
+  AI_UNAVAILABLE: { status: 503, message: 'Listing assistance is unavailable' },
+  AI_TIMEOUT: { status: 504, message: 'Listing assistance timed out' },
+  AI_RATE_LIMITED: { status: 429, message: 'Listing assistance is busy; try later' },
+  AI_OUTPUT_INVALID: { status: 502, message: 'Listing assistance returned unusable content' },
   LISTING_INCOMPLETE: { status: 422, message: 'Listing information is incomplete or invalid' },
   LISTING_TRANSITION_CONFLICT: { status: 409, message: 'Listing cannot make this transition' },
   LISTING_NOT_FOUND: { status: 404, message: 'Listing not found' },

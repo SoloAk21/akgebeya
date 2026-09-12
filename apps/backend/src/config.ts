@@ -144,3 +144,18 @@ export function parseProviderConfig(environment: NodeJS.ProcessEnv) {
 }
 export type ProviderConfig = ReturnType<typeof parseProviderConfig>;
 export function loadProviderConfig(): ProviderConfig { loadEnvironment(); return parseProviderConfig(process.env); }
+
+const geminiEnvironmentSchema = z.object({
+  GEMINI_API_KEY: z.string().trim().min(1).max(4096).regex(/^[A-Za-z0-9._-]+$/).optional(),
+  GEMINI_MODEL: z.string().trim().regex(/^gemini-[A-Za-z0-9._-]{1,100}$/).optional(),
+}).refine(value => Boolean(value.GEMINI_API_KEY) === Boolean(value.GEMINI_MODEL));
+export function parseGeminiConfig(environment: NodeJS.ProcessEnv) {
+  const result = geminiEnvironmentSchema.safeParse({
+    GEMINI_API_KEY: environment.GEMINI_API_KEY?.trim() || undefined,
+    GEMINI_MODEL: environment.GEMINI_MODEL?.trim() || undefined,
+  });
+  if (!result.success) throw new Error('Invalid Gemini configuration');
+  return Object.freeze({ apiKey: result.data.GEMINI_API_KEY, model: result.data.GEMINI_MODEL, timeoutMs: 60000 as number });
+}
+export type GeminiConfig = ReturnType<typeof parseGeminiConfig>;
+export function loadGeminiConfig(): GeminiConfig { loadEnvironment(); return parseGeminiConfig(process.env); }

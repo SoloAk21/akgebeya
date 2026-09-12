@@ -6,8 +6,9 @@ export const completeInput=(category:'RESIDENTIAL'|'COMMERCIAL'|'LAND'='RESIDENT
  titleEn:'Completion fixture',descriptionEn:'Private completion verification fixture',price:'100.00',
  location:{regionEn:'Addis Ababa',cityEn:'Addis Ababa'},
 });
-export async function completionFixture(){
- const f=await listingFixture();
+import type { ListingAiClient } from '../src/listings/ai.js';
+export async function completionFixture(ai?:ListingAiClient){
+ const f=await listingFixture(ai);
  const result=await f.listingService.create(f.context,completeInput());
  const row=f.rows.get(result.id)!;
  const id=randomUUID();

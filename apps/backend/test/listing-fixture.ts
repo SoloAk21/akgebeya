@@ -3,7 +3,8 @@ import { Prisma } from '../src/generated/prisma/client.js';
 import { providerFixture } from './provider-fixture.js';
 import { ListingService } from '../src/listings/service.js';
 import type { DraftRecord,ListingRepository } from '../src/listings/types.js';
-export async function listingFixture(){
+import type { ListingAiClient } from '../src/listings/ai.js';
+export async function listingFixture(ai?:ListingAiClient){
  const f=providerFixture();const p=await f.providerService.create(f.context,{role:'OWNER',nameEn:'Draft owner'});
  const v=await f.providerService.submit(f.context);await f.providerService.decide(f.adminContext,p.id,{verificationId:v.id},true);
  const other=await f.providerService.create(f.otherContext,{role:'BROKER',nameEn:'Other'});
@@ -25,6 +26,7 @@ export async function listingFixture(){
      async get(id){const r=rows.get(id);return r&&r.providerId===provider?.id&&!r.deletedAt?r:null;},
      async mine(limit,offset){return [...rows.values()].filter(r=>r.providerId===provider?.id&&!r.deletedAt&&r.status==='DRAFT').slice(offset,offset+limit);},
      async transition(row,target){row.status=target;row.revision=String(++sequence);return row;},
+     async saveAi(row,output){Object.assign(row,output);row.status='AI_ASSIST';row.revision=String(++sequence);return row;},
      async update(row,input,remove){
       const {location:_location,price,areaSqm,...rest}=input;Object.assign(row,rest);
       if(price!==undefined)row.price=price===null?null:new Prisma.Decimal(price);
@@ -36,5 +38,5 @@ export async function listingFixture(){
    queue=work.then(()=>{},()=>{});return work;
   },
  };
- return {...f,rows,ownerProvider:p,listingService:new ListingService(repository)};
+ return {...f,rows,ownerProvider:p,listingService:new ListingService(repository,ai)};
 }
