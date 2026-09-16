@@ -51,6 +51,8 @@ model ListingDraft {
   bedrooms Int?
   bathrooms Int?
   version Int @default(1)
+  mediaVersion Int @default(1)
+  media ListingMedia[]
   countryId String @db.VarChar(2)
   regionId String @db.VarChar(40)
   cityId String @db.VarChar(40)
@@ -65,6 +67,25 @@ model ListingDraft {
   @@unique([accountId, requestId])
   @@index([accountId, createdAt, id])
   @@map("listing_draft")
+  @@schema("akgebeya_foundation")
+}
+
+model ListingMedia {
+  id String @id @default(uuid()) @db.Uuid
+  listingId String @db.Uuid
+  requestId String @db.Uuid
+  sha256 String @db.Char(64)
+  position Int
+  width Int
+  height Int
+  byteSize Int
+  bytes Bytes @db.ByteA
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  listing ListingDraft @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, requestId])
+  @@unique([listingId, position])
+  @@map("listing_media")
   @@schema("akgebeya_foundation")
 }
 

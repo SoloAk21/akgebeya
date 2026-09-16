@@ -114,6 +114,12 @@ a COMPLETE readiness state. Add a description, ETB price, area, and applicable r
 counts; the server checks completeness and rejects stale edits. COMPLETE listings
 remain private. Run `npm run test:listing-editing`; see [the editing guide](docs/listing-editing.md).
 
+Feature 11 adds private property photos: upload JPEG/PNG/WebP, view processed previews,
+choose the cover by reordering, and remove photos. Upload retries are idempotent;
+photos remain owner-only and do not change listing details or publishing status.
+Run `npm run test:media`; see [the media guide](docs/listing-media.md) for limits,
+storage choices, migration, and verification.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

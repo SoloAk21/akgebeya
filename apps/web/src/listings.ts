@@ -1,3 +1,5 @@
+import { mediaPanel } from './media.js';
+
 type Listing = {
   id: string; title: string; transactionType: 'RENT' | 'SALE';
   propertyType: 'APARTMENT' | 'HOUSE' | 'LAND' | 'COMMERCIAL'; status: 'DRAFT' | 'COMPLETE';
@@ -52,6 +54,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
   const editSave = node<HTMLButtonElement>('listing-edit-save'), editComplete = node<HTMLButtonElement>('listing-edit-complete');
   const discard = node<HTMLButtonElement>('listing-discard');
   const edits = Object.fromEntries(editKeys.map(key => [key, node<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`listing-edit-${key}`)])) as Record<EditKey, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
+  const media = mediaPanel(callbacks);
   let ready = false, blocked = true, eligible = false, approved = false, version = 0;
   let selected: Listing | undefined, dirty = false, conflict = false;
   let controller = new AbortController();
@@ -70,11 +73,13 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     editSave.disabled = editBlocked || conflict; editComplete.disabled = editBlocked || conflict;
     discard.disabled = value || !selected;
     editForm.setAttribute('aria-busy', String(value));
+    media.setBusy(value, approved && ready);
   }
   function reset() {
     version++; controller.abort(); controller = new AbortController();
     ready = false; eligible = false; approved = false; retry = undefined; listings = [];
     selected = undefined; dirty = false; conflict = false; editForm.reset(); editor.hidden = true;
+    media.reset();
     editStatus.textContent = ''; missing.textContent = ''; clearErrors();
     form.reset(); title.setCustomValidity('');
     list.replaceChildren(); detail.replaceChildren(); detail.hidden = true;
@@ -114,6 +119,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     }
     detail.append(heading, description, fields);
     selected = item; dirty = false; conflict = false; editor.hidden = false;
+    media.select(item.id, approved && ready);
     for (const key of editKeys) edits[key].value = String(item[key] ?? '');
     clearErrors(); updateEditor();
     missing.textContent = item.missingFields.length

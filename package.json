@@ -29,6 +29,7 @@
     "test:geocoding": "node --import tsx --test tests/integration/geocoding.test.mjs",
     "test:listing": "node --import tsx --test tests/integration/listing.test.mjs",
     "test:listing-editing": "node --import tsx --test tests/integration/listing-editing.test.mjs",
+    "test:media": "node --import tsx --test tests/integration/media.test.mjs",
     "admin:access": "tsx scripts/admin-access.ts",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . --max-warnings 0",
@@ -36,6 +37,14 @@
     "test": "node --import tsx --test tests/*.test.mjs",
     "build": "npm run build --workspaces",
     "verify": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.0"
+    },
+    "prisma": {
+      "mysql2": "3.24.4"
+    }
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

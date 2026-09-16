@@ -120,6 +120,19 @@
               </form>
               <button id="listing-discard" type="button" class="secondary">Discard changes and reload saved property</button>
             </div>
+            <div id="listing-media" class="photo-panel" hidden>
+              <h4>Property photos</h4>
+              <p class="note">Photos remain private. Add up to 10 JPEG, PNG, or WebP photos, each up to 8 MiB. Images are resized and converted to JPEG; embedded metadata is removed. The first photo is the cover.</p>
+              <p id="listing-media-status" role="status" aria-live="polite"></p>
+              <button id="listing-media-reload" type="button" class="secondary">Reload photos</button>
+              <ol id="listing-media-list" class="photo-list" aria-label="Saved property photos"></ol>
+              <label for="listing-media-file">Choose a property photo</label>
+              <input id="listing-media-file" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="listing-media-selected" />
+              <p id="listing-media-selected" class="note" role="status"></p>
+              <button id="listing-media-upload" type="button" disabled>Upload photo</button>
+              <button id="listing-media-clear" type="button" class="secondary" disabled>Clear selected photo</button>
+              <p class="note">Photo uploads, ordering, and removal save immediately. They do not save or discard changes in your property details above. Removing a photo permanently removes it from this property.</p>
+            </div>
             <h4>Create a private draft</h4>
             <p id="listing-eligibility" class="note" role="status"></p>
             <form id="listing-form" aria-describedby="listing-snapshot-help">
