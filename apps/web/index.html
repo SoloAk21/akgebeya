@@ -27,6 +27,30 @@
           </form>
           <p id="profile-status" role="status" aria-live="polite"></p>
           <button id="profile-retry" type="button" class="secondary" hidden>Reload profile</button>
+          <div class="provider-panel" aria-labelledby="provider-heading">
+            <h3 id="provider-heading">Become a property provider</h3>
+            <p class="note">Apply once as an Owner, Broker, Agent, Agency, or Developer. Your selection is saved when you submit.</p>
+            <p id="provider-feedback" role="status" aria-live="polite"></p>
+            <form id="provider-form" hidden>
+              <label for="provider-type">Provider type</label>
+              <select id="provider-type" name="providerType" required disabled>
+                <option value="">Choose a provider type</option>
+                <option value="OWNER">Owner</option>
+                <option value="BROKER">Broker</option>
+                <option value="AGENT">Agent</option>
+                <option value="AGENCY">Agency</option>
+                <option value="DEVELOPER">Developer</option>
+              </select>
+              <button id="provider-submit" type="submit" disabled>Submit application</button>
+            </form>
+            <dl id="provider-details" hidden>
+              <div><dt>Provider type</dt><dd id="provider-saved-type"></dd></div>
+              <div><dt>Verification status</dt><dd id="provider-saved-status"></dd></div>
+              <div><dt>Submitted</dt><dd id="provider-submitted"></dd></div>
+            </dl>
+            <button id="provider-reload" type="button" class="secondary" hidden>Reload application</button>
+            <p class="note">Review decisions are not available in this development preview yet.</p>
+          </div>
           <button id="logout" type="button" class="secondary">Sign out</button>
         </div>
         <form id="auth-form" hidden>

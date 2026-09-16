@@ -1,4 +1,4 @@
-export {};
+import { providerPanel } from './provider.js';
 
 function control<T extends HTMLElement>(id: string) {
   const node = document.getElementById(id);
@@ -23,6 +23,10 @@ const profileRetry = control<HTMLButtonElement>('profile-retry');
 const profileStatus = control('profile-status');
 let register = false;
 let profileReady = false;
+const provider = providerPanel({ busy, expired: async () => {
+  await showUser();
+  status.textContent = 'Your session has ended. Please sign in again.';
+} });
 
 function busy(value: boolean) {
   for (const input of [email, password, submit, toggle, logout, retry]) input.disabled = value;
@@ -31,6 +35,7 @@ function busy(value: boolean) {
   profileSave.disabled = value || !profileReady;
   profileRetry.disabled = value;
   profileForm.setAttribute('aria-busy', String(value));
+  provider.setBusy(value);
 }
 
 async function request(path: string, data?: { email: string; password: string } | Record<string, never>) {
@@ -44,6 +49,7 @@ async function request(path: string, data?: { email: string; password: string } 
 }
 
 async function showUser(accountEmail?: string) {
+  provider.reset();
   profileReady = false;
   displayName.value = '';
   profileStatus.textContent = '';
@@ -54,7 +60,10 @@ async function showUser(accountEmail?: string) {
   control('account-email').textContent = accountEmail ?? '';
   password.value = '';
   heading.textContent = accountEmail ? 'You’re signed in.' : register ? 'Create your account' : 'Sign in';
-  if (accountEmail) await loadProfile();
+  if (accountEmail) {
+    await loadProfile();
+    if (!signedIn.hidden) await provider.load();
+  }
 }
 
 async function profileRequest(save = false) {

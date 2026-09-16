@@ -76,6 +76,12 @@ and choose **Save profile**; the name persists across refresh and later sign-ins
 Run `npm run test:profile` for real database and account-isolation checks. See
 [the profile guide](docs/profile.md) for API commands and browser verification.
 
+Feature 6 adds provider applications for Owners, Brokers, Agents, Agencies, and
+Developers. Signed-in users can submit once and see their saved verification status.
+Applications start pending; admin review is the next milestone. Run
+`npm run test:provider` for persistence, concurrency, and authorization checks. See
+[the provider onboarding guide](docs/provider-onboarding.md) for exact verification steps.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

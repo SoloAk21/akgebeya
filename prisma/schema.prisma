@@ -26,6 +26,7 @@ model Account {
   passwordHash String    @db.VarChar(256)
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   sessions     Session[]
+  providerApplication ProviderApplication?
 
   @@map("account")
   @@schema("akgebeya_foundation")
@@ -50,5 +51,34 @@ model AuthAttempt {
 
   @@index([expiresAt])
   @@map("auth_attempt")
+  @@schema("akgebeya_foundation")
+}
+
+enum ProviderType {
+  OWNER
+  BROKER
+  AGENT
+  AGENCY
+  DEVELOPER
+
+  @@schema("akgebeya_foundation")
+}
+
+enum ProviderVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("akgebeya_foundation")
+}
+
+model ProviderApplication {
+  accountId    String @id @db.Uuid
+  providerType ProviderType
+  status       ProviderVerificationStatus @default(PENDING)
+  submittedAt  DateTime @default(now()) @db.Timestamptz(3)
+  account      Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("provider_application")
   @@schema("akgebeya_foundation")
 }
