@@ -88,6 +88,27 @@
             <button id="provider-reload" type="button" class="secondary" hidden>Reload application</button>
             <p id="provider-review" class="note"></p>
           </div>
+          <div class="provider-panel" aria-labelledby="listing-heading">
+            <h3 id="listing-heading">Your property drafts</h3>
+            <p class="note">Start a private draft with a title and property type. Only you can view it. Public listing and editing are not available yet.</p>
+            <p id="listing-feedback" role="status" aria-live="polite"></p>
+            <button id="listing-reload" type="button" class="secondary">Reload drafts</button>
+            <ul id="listing-list" class="draft-list" aria-label="Your saved property drafts"></ul>
+            <div id="listing-detail" class="draft-detail" aria-label="Selected draft details" hidden></div>
+            <h4>Create a private draft</h4>
+            <p id="listing-eligibility" class="note" role="status"></p>
+            <form id="listing-form" aria-describedby="listing-snapshot-help">
+              <label for="listing-title">Property title</label>
+              <input id="listing-title" name="title" required maxlength="240" autocomplete="off" aria-describedby="listing-title-help" disabled />
+              <p id="listing-title-help" class="note">Use 1–120 characters, for example “Two-bedroom apartment in Bole”.</p>
+              <div class="draft-controls">
+                <div><label for="listing-transaction">Offer</label><select id="listing-transaction" required disabled><option value="RENT">For rent</option><option value="SALE">For sale</option></select></div>
+                <div><label for="listing-property">Property type</label><select id="listing-property" required disabled><option value="APARTMENT">Apartment</option><option value="HOUSE">House</option><option value="LAND">Land</option><option value="COMMERCIAL">Commercial</option></select></div>
+              </div>
+              <p id="listing-snapshot-help" class="note">Creating a draft copies your last saved, confirmed location, including its exact coordinates. Unsaved map changes are not included. Later account-location changes will not move this draft. You can save up to 50 drafts.</p>
+              <button id="listing-create" type="submit" disabled>Create private draft</button>
+            </form>
+          </div>
           <div id="admin-panel" class="provider-panel" aria-labelledby="admin-heading" hidden>
             <h3 id="admin-heading">Provider review</h3>
             <p class="note">Review the account and requested provider type before recording a decision. Email ownership and identity documents have not been verified by this app.</p>
@@ -137,7 +158,7 @@
         <button id="retry" type="button">Check again</button>
       </section>
       </details>
-      <p class="note">Development preview · Property listings are not available yet.</p>
+      <p class="note">Development preview · Private drafts are available to approved providers. Public property listings are not available yet.</p>
     </main>
     <footer><span>AKGEBEYA</span><span>Built for Ethiopia.</span></footer>
     <script type="module" src="/src/index.ts"></script>

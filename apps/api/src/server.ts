@@ -6,7 +6,7 @@ export function createHealthServer(readiness?: () => Promise<void>, auth?: (requ
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     const path = request.url?.split('?')[0];
-    if ((path?.startsWith('/api/auth/') || path?.startsWith('/api/admin/') || path === '/api/profile' || path === '/api/provider-application' || path === '/api/location' || path === '/api/location-options' || path === '/api/location-search' || path === '/api/location-reverse') && auth) {
+    if ((path?.startsWith('/api/auth/') || path?.startsWith('/api/admin/') || path === '/api/listings' || path?.startsWith('/api/listings/') || path === '/api/profile' || path === '/api/provider-application' || path === '/api/location' || path === '/api/location-options' || path === '/api/location-search' || path === '/api/location-reverse') && auth) {
       void auth(request, response);
       return;
     }

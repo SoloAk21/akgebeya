@@ -103,6 +103,12 @@ coordinates remain available without it. See [advanced location setup and verifi
 Live checks found Addis Ababa landmarks and matched “Bolle” to Bole; the Amharic
 query “ቦሌ” returned no suggestions. Coverage varies with the provider’s map data.
 
+Feature 9 adds private listing drafts for approved providers. Enter a title, choose
+Rent or Sale and a property type, then create a draft using your saved confirmed
+location. Drafts retain their own location snapshot and remain available after
+refresh. Run `npm run test:listing` for authorization, duplicate-request, snapshot,
+and persistence checks. See [the listing draft guide](docs/listing-drafts.md).
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

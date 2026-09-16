@@ -30,8 +30,34 @@ model Account {
   providerApplication ProviderApplication?
   providerReviews ProviderReview[]
   location AccountLocation?
+  listingDrafts ListingDraft[]
 
   @@map("account")
+  @@schema("akgebeya_foundation")
+}
+
+model ListingDraft {
+  id String @id @default(uuid()) @db.Uuid
+  accountId String @db.Uuid
+  requestId String @db.Uuid
+  title String @db.VarChar(120)
+  transactionType String @db.VarChar(4)
+  propertyType String @db.VarChar(10)
+  status String @default("DRAFT") @db.VarChar(5)
+  countryId String @db.VarChar(2)
+  regionId String @db.VarChar(40)
+  cityId String @db.VarChar(40)
+  subcityId String @db.VarChar(40)
+  latitude Float @db.DoublePrecision
+  longitude Float @db.DoublePrecision
+  address Json? @db.JsonB
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @db.Timestamptz(3)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, requestId])
+  @@index([accountId, createdAt, id])
+  @@map("listing_draft")
   @@schema("akgebeya_foundation")
 }
 

@@ -5,6 +5,7 @@ import { locationInput, locationOptions, readLocation, saveLocation } from './lo
 import { geocoder, GeocodingError, limitGeocoding, reverseInput, searchInput, type Geocoder } from './geocoding.js';
 import { applicationFields, applyAsProvider, providerInput } from './provider.js';
 import { decideApplication, readApplication, reviewInput, reviewQueue, UUID } from './admin.js';
+import { createListing, listingInput, listListings, readListing } from './listing.js';
 import { AuthError, credentials, digest, hashPassword, sessionToken, tokenFromCookie, verifyPassword } from './auth-security.js';
 
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
@@ -69,6 +70,10 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
     response.once('close', cancel);
     try {
       const isProfile = path === '/api/profile';
+      const isListings = path === '/api/listings';
+      const listingId = path?.match(/^\/api\/listings\/([^/]+)$/)?.[1];
+      if (listingId && !UUID.test(listingId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid draft ID.');
+      const isListing = isListings || Boolean(listingId);
       const isLocation = path === '/api/location';
       const isLocationOptions = path === '/api/location-options';
       const isSearch = path === '/api/location-search';
@@ -80,10 +85,10 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       const reviewId = path?.match(/^\/api\/admin\/provider-applications\/([^/]+)$/)?.[1];
       if (reviewId && !UUID.test(reviewId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid application ID.');
       const isAdmin = isAccess || isQueue || Boolean(reviewId);
-      if (!isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !isGeocoding && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
+      if (!isListing && !isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !isGeocoding && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
         throw new AuthError(404, 'NOT_FOUND', 'Not found.');
       }
-      const methods = isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
+      const methods = listingId ? ['GET'] : isListings ? ['GET', 'POST'] : isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
       if (!methods.includes(request.method ?? '')) {
         response.setHeader('Allow', methods.join(', '));
         throw new AuthError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
@@ -93,13 +98,19 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       }
       const token = tokenFromCookie(request.headers.cookie, cookieName);
       const database = getDatabase();
-      if (path === '/api/auth/session' || isProfile || isProvider || isAdmin || isLocation || isLocationOptions || isGeocoding) {
+      if (path === '/api/auth/session' || isListing || isProfile || isProvider || isAdmin || isLocation || isLocationOptions || isGeocoding) {
         const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: { ...publicAccount, displayName: true, isAdmin: true } } } }) : null;
         if (!session || session.expiresAt.getTime() <= Date.now()) {
           response.setHeader('Set-Cookie', cookie('', 0));
           throw new AuthError(401, 'UNAUTHENTICATED', 'Please sign in.');
         }
-        if (isGeocoding) {
+        if (isListing) {
+          if (listingId) send(200, { listing: await readListing(database, session.account.id, listingId) });
+          else if (request.method === 'POST') {
+            const result = await createListing(database, session.account.id, listingInput(await body(request)));
+            send(result.created ? 201 : 200, { listing: result.listing });
+          } else send(200, { listings: await listListings(database, session.account.id) });
+        } else if (isGeocoding) {
           const data = await body(request);
           if (isSearch) {
             const input = searchInput(data);
