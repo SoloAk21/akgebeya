@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist", "lib": ["ES2022", "DOM", "DOM.Iterable"] },
+  "compilerOptions": { "rootDir": "src", "outDir": "dist", "lib": ["ES2022", "DOM", "DOM.Iterable"], "types": [], "module": "ESNext", "moduleResolution": "Bundler" },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }
