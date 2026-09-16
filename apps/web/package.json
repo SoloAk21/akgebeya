@@ -8,5 +8,11 @@
     "preview": "vite preview --host 127.0.0.1 --port 3000 --strictPort",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4"
+  },
+  "devDependencies": {
+    "@types/leaflet": "1.9.21"
   }
 }

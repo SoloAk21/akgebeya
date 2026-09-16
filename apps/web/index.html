@@ -27,6 +27,25 @@
           </form>
           <p id="profile-status" role="status" aria-live="polite"></p>
           <button id="profile-retry" type="button" class="secondary" hidden>Reload profile</button>
+          <div class="provider-panel" aria-labelledby="location-heading">
+            <h3 id="location-heading">Your location</h3>
+            <p class="note">Currently available in Addis Ababa’s 11 subcities. Choose your subcity and confirm a pin. The pin is your selection; official subcity boundaries are not verified.</p>
+            <p id="location-feedback" role="status" aria-live="polite"></p>
+            <form id="location-form">
+              <label for="location-country">Country</label><select id="location-country" required disabled></select>
+              <label for="location-region">Region / city administration</label><select id="location-region" required disabled></select>
+              <label for="location-city">City</label><select id="location-city" required disabled></select>
+              <label for="location-subcity">Subcity</label><select id="location-subcity" required disabled></select>
+              <p class="note">Click the map to place a pin, or enter latitude and longitude below. Supported service area: 8.8–9.15° N, 38.6–39° E.</p>
+              <div id="location-map" role="region" aria-label="Choose a location on the map"></div>
+              <p id="location-map-status" class="note" role="status"></p>
+              <label for="location-latitude">Latitude</label><input id="location-latitude" type="number" step="any" required disabled />
+              <label for="location-longitude">Longitude</label><input id="location-longitude" type="number" step="any" required disabled />
+              <label class="confirmation" for="location-confirmed"><input id="location-confirmed" type="checkbox" required disabled /> I confirm this pin matches my selected location.</label>
+              <button id="location-save" type="submit" disabled>Save location</button>
+            </form>
+            <button id="location-reload" type="button" class="secondary">Reload location and map</button>
+          </div>
           <div class="provider-panel" aria-labelledby="provider-heading">
             <h3 id="provider-heading">Become a property provider</h3>
             <p class="note">Apply once as an Owner, Broker, Agent, Agency, or Developer. Your selection is saved when you submit.</p>

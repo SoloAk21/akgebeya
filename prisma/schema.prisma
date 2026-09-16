@@ -29,8 +29,26 @@ model Account {
   sessions     Session[]
   providerApplication ProviderApplication?
   providerReviews ProviderReview[]
+  location AccountLocation?
 
   @@map("account")
+  @@schema("akgebeya_foundation")
+}
+
+model AccountLocation {
+  accountId String @id @db.Uuid
+  countryId String @db.VarChar(2)
+  regionId String @db.VarChar(40)
+  cityId String @db.VarChar(40)
+  subcityId String @db.VarChar(40)
+  latitude Float @db.DoublePrecision
+  longitude Float @db.DoublePrecision
+  confirmed Boolean
+  point Unsupported("geometry(Point,4326)") @default(dbgenerated())
+  updatedAt DateTime @default(now()) @db.Timestamptz(3)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("account_location")
   @@schema("akgebeya_foundation")
 }
 

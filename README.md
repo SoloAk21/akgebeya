@@ -88,6 +88,14 @@ reloading. No account is an admin by default; operators grant/revoke trusted acc
 UUIDs with `npm run admin:access -- grant|revoke ACCOUNT_UUID`. See
 [the admin verification guide](docs/admin-provider-verification.md) for setup and tests.
 
+Feature 8 adds a private saved location: Ethiopia → Addis Ababa city administration →
+Addis Ababa → one of its eleven subcities. Choose a map pin or enter coordinates,
+confirm the selection, and save it across refresh and later sign-ins. Coverage is
+currently limited to an Addis Ababa service rectangle; official subcity boundaries
+are not verified. Run `npm run test:location` for real PostGIS persistence and
+authorization checks. See [the location guide](docs/location-selection.md) for
+sample data, map attribution, limitations, and verification instructions.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 
