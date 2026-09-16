@@ -52,14 +52,21 @@ not a production hosting server.
 
 ## Current capability
 
-Feature 2 adds a running browser app and public backend health endpoint. The page
+The running skeleton provides a browser app and public backend health endpoint. The page
 shows the service and server timestamp, supports retry, and displays an error when
 the API is unavailable or its response is invalid. Every reload makes a fresh request.
-The health check proves the HTTP service is reachable; it does not check a database
-or any future integration. There is no database, authentication, or Telegram bot yet.
+The health check proves the HTTP service is reachable. Feature 3 adds PostgreSQL/PostGIS
+and a separate `/api/ready` database readiness endpoint. Copy `.env.example` to `.env`,
+configure a development database, inspect it with `npm run db:inspect`, then apply the
+additive migration with `npm run db:migrate`. Save and read the controlled record using
+`npm run db:probe:write` and `npm run db:probe:read`. Run `npm run test:database` for real
+database verification. Database setup is isolated in the `akgebeya_foundation` schema;
+existing schemas and migration histories are preserved. There is no authentication or
+Telegram bot in this repository yet.
 
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 
-See [the skeleton verification guide](docs/running-skeleton.md) for exact API and
+See [the database guide](docs/database-foundation.md) for connection, migration, and
+database verification steps, [the skeleton verification guide](docs/running-skeleton.md) for exact API and
 browser tests, and [the foundation record](docs/foundation.md) for milestone history.

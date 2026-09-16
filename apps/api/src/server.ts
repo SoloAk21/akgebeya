@@ -1,13 +1,13 @@
 import { createServer } from 'node:http';
 
-export function createHealthServer() {
+export function createHealthServer(readiness?: () => Promise<void>) {
   return createServer((request, response) => {
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     const path = request.url?.split('?')[0];
 
-    if (path !== '/api/health') {
+    if (path !== '/api/health' && path !== '/api/ready') {
       response.writeHead(404);
       response.end(JSON.stringify({ error: 'NOT_FOUND' }));
       return;
@@ -16,6 +16,18 @@ export function createHealthServer() {
       response.setHeader('Allow', 'GET, HEAD');
       response.writeHead(405);
       response.end(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }));
+      return;
+    }
+
+    if (path === '/api/ready') {
+      const check = readiness ? Promise.resolve().then(readiness) : Promise.reject(new Error('Not configured'));
+      void check.then(() => {
+        response.writeHead(200);
+        response.end(request.method === 'HEAD' ? undefined : JSON.stringify({ status: 'ok', database: 'ready' }));
+      }).catch(() => {
+        response.writeHead(503);
+        response.end(request.method === 'HEAD' ? undefined : JSON.stringify({ status: 'unavailable', database: 'unavailable' }));
+      });
       return;
     }
 

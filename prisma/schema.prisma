@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../apps/api/src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["akgebeya_foundation"]
+}
+
+// One controlled operational record; no speculative product schema.
+model FoundationProbe {
+  id        String   @id @db.VarChar(32)
+  message   String   @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("foundation_probe")
+  @@schema("akgebeya_foundation")
+}

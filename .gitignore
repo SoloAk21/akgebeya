@@ -10,3 +10,4 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+apps/api/src/generated/
