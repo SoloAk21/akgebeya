@@ -136,6 +136,12 @@ and sales. Approved providers can check the fee for a complete saved property;
 unsaved edits clear the previous result. No payment is taken. Run
 `npm run test:listing-fee`; see [the listing fee guide](docs/listing-fee.md).
 
+Feature 15 adds Chapa **test-only** checkout initiation for complete saved listings.
+Set server-only `CHAPA_SECRET_KEY` to a v1 test secret and apply migration 12.
+Saved attempts prevent duplicate checkout creation; this step does not verify payment
+or publish properties. Run `npm run test:listing-payment`; see the
+[sandbox payment guide](docs/chapa-payment.md) for setup, limitations and checks.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

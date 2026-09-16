@@ -152,7 +152,19 @@
               <p id="listing-fee-status" role="status" aria-live="polite"></p>
               <div id="listing-fee-result" class="listing-fee-result" hidden><strong id="listing-fee-amount"></strong><p id="listing-fee-checked" class="note"></p></div>
               <button id="listing-fee-check" type="button" disabled>Check listing fee</button>
-              <p class="note">Checking the fee does not charge you or publish your property. Payment is not available in this step.</p>
+              <p class="note">Checking the fee does not charge you or publish your property.</p>
+            </div>
+            <div id="listing-payment" class="listing-fee-panel" hidden>
+              <h4>Chapa test payment</h4>
+              <p class="note" id="listing-payment-disclosure">This is a sandbox checkout for testing only. Do not use real money. Starting checkout does not publish this property, and returning from Chapa does not confirm payment. Payment verification is not available in this step.</p>
+              <p id="listing-payment-readiness" class="note"></p>
+              <p id="listing-payment-status" role="status" aria-live="polite"></p>
+              <p id="listing-payment-amount" class="listing-payment-amount"></p>
+              <label class="confirmation" for="listing-payment-consent"><input id="listing-payment-consent" type="checkbox" aria-describedby="listing-payment-disclosure listing-payment-amount" /> I agree to start a Chapa sandbox checkout for the displayed test amount.</label>
+              <button id="listing-payment-start" type="button" disabled>Start Chapa test payment</button>
+              <button id="listing-payment-reload" type="button" class="secondary">Reload test payment status</button>
+              <p><a id="listing-payment-checkout" target="_blank" rel="noopener noreferrer" hidden>Open Chapa test checkout (new tab)</a></p>
+              <p class="note">Only one test payment attempt can be created per property in this step. If the result is uncertain or failed, reload its status; do not start another payment.</p>
             </div>
             <h4>Create a private draft</h4>
             <p id="listing-eligibility" class="note" role="status"></p>

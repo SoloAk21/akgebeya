@@ -33,6 +33,7 @@
     "test:listing-ai": "node --import tsx --test tests/integration/listing-ai.test.mjs",
     "test:listing-preview": "node --import tsx --test tests/integration/listing-preview.test.mjs",
     "test:listing-fee": "node --import tsx --test tests/integration/listing-fee.test.mjs",
+    "test:listing-payment": "node --import tsx --test tests/integration/listing-payment.test.mjs",
     "admin:access": "tsx scripts/admin-access.ts",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . --max-warnings 0",

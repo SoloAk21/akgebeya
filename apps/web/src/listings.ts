@@ -2,6 +2,7 @@ import { mediaPanel } from './media.js';
 import { listingAiPanel } from './listing-ai.js';
 import { listingPreviewPanel } from './listing-preview.js';
 import { listingFeePanel } from './listing-fee.js';
+import { listingPaymentPanel } from './listing-payment.js';
 
 type Listing = {
   id: string; title: string; transactionType: 'RENT' | 'SALE';
@@ -57,10 +58,11 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
   const editSave = node<HTMLButtonElement>('listing-edit-save'), editComplete = node<HTMLButtonElement>('listing-edit-complete');
   const discard = node<HTMLButtonElement>('listing-discard');
   const edits = Object.fromEntries(editKeys.map(key => [key, node<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`listing-edit-${key}`)])) as Record<EditKey, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
-  const media = mediaPanel(callbacks);
+  const media = mediaPanel({ ...callbacks, changed: () => payment.invalidate() });
   const assistant = listingAiPanel(callbacks);
   const preview = listingPreviewPanel(callbacks);
   const fee = listingFeePanel(callbacks);
+  const payment = listingPaymentPanel(callbacks);
   let ready = false, blocked = true, eligible = false, approved = false, version = 0;
   let selected: Listing | undefined, dirty = false, conflict = false;
   let controller = new AbortController();
@@ -83,6 +85,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     assistant.setBusy(value, approved && ready, dirty);
     preview.setBusy(value, dirty);
     fee.setBusy(value, approved && ready, dirty);
+    payment.setBusy(value, approved && ready, dirty);
   }
   function reset() {
     version++; controller.abort(); controller = new AbortController();
@@ -92,6 +95,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     assistant.reset();
     preview.reset();
     fee.reset();
+    payment.reset();
     editStatus.textContent = ''; missing.textContent = ''; clearErrors();
     form.reset(); title.setCustomValidity('');
     list.replaceChildren(); detail.replaceChildren(); detail.hidden = true;
@@ -135,6 +139,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     assistant.select(item, approved && ready);
     preview.select(item.id);
     fee.select(item, approved && ready);
+    payment.select(item, approved && ready);
     for (const key of editKeys) edits[key].value = String(item[key] ?? '');
     clearErrors(); updateEditor();
     missing.textContent = item.missingFields.length
@@ -249,6 +254,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
       assistant.setBusy(blocked, approved && ready, dirty);
       preview.setBusy(blocked, dirty);
       fee.setBusy(blocked, approved && ready, dirty);
+      payment.setBusy(blocked, approved && ready, dirty);
       if (!conflict) editStatus.textContent = 'You have unsaved changes.';
       if (key === 'transactionType' || key === 'propertyType') updateEditor();
     });

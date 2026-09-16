@@ -11,6 +11,8 @@ import { deleteMedia, mediaDeleteInput, mediaOrderInput, MediaError, orderMedia,
 import { aiContentInput, generateAiContent, readAiContent } from './listing-ai.js';
 import { readListingPreview } from './listing-preview.js';
 import { readListingFee } from './listing-fee.js';
+import { initializeListingPayment, paymentInput, readListingPayment } from './listing-payment.js';
+import { createChapaGateway, type ChapaGateway } from './chapa.js';
 import { AiError, createListingGenerator, type ListingGenerator } from './gemini.js';
 import { AuthError, credentials, digest, hashPassword, sessionToken, tokenFromCookie, verifyPassword } from './auth-security.js';
 
@@ -65,7 +67,7 @@ async function throttle(database: PrismaClient, ip: string, email: string) {
   }
 }
 
-export function createAuthHandler(getDatabase: () => PrismaClient, options: AuthOptions, lookup: Geocoder = geocoder, generator: ListingGenerator = createListingGenerator()) {
+export function createAuthHandler(getDatabase: () => PrismaClient, options: AuthOptions, lookup: Geocoder = geocoder, generator: ListingGenerator = createListingGenerator(), gateway: ChapaGateway = createChapaGateway()) {
   const cookieName = options.secure ? '__Host-akgebeya_session' : 'akgebeya_session';
   const cookie = (token: string, seconds: number) => `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${seconds}${options.secure ? '; Secure' : ''}`;
   return async (request: IncomingMessage, response: ServerResponse) => {
@@ -77,6 +79,9 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
     try {
       const isProfile = path === '/api/profile';
       const isListings = path === '/api/listings';
+      const paymentId = path?.match(/^\/api\/listings\/([^/]+)\/payment$/)?.[1];
+      if (paymentId && !UUID.test(paymentId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid property ID.');
+      const isPayment = Boolean(paymentId);
       const feeId = path?.match(/^\/api\/listings\/([^/]+)\/fee$/)?.[1];
       if (feeId && !UUID.test(feeId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid property ID.');
       const isFee = Boolean(feeId);
@@ -104,10 +109,10 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       const reviewId = path?.match(/^\/api\/admin\/provider-applications\/([^/]+)$/)?.[1];
       if (reviewId && !UUID.test(reviewId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid application ID.');
       const isAdmin = isAccess || isQueue || Boolean(reviewId);
-      if (!isFee && !isPreview && !isAiContent && !isMedia && !isListing && !isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !isGeocoding && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
+      if (!isPayment && !isFee && !isPreview && !isAiContent && !isMedia && !isListing && !isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !isGeocoding && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
         throw new AuthError(404, 'NOT_FOUND', 'Not found.');
       }
-      const methods = isFee || isPreview ? ['GET'] : isAiContent ? ['GET', 'POST'] : isMedia ? mediaId ? ['GET', 'DELETE'] : ['GET', 'POST', 'PUT'] : listingId ? ['GET', 'PUT'] : isListings ? ['GET', 'POST'] : isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
+      const methods = isPayment ? ['GET', 'POST'] : isFee || isPreview ? ['GET'] : isAiContent ? ['GET', 'POST'] : isMedia ? mediaId ? ['GET', 'DELETE'] : ['GET', 'POST', 'PUT'] : listingId ? ['GET', 'PUT'] : isListings ? ['GET', 'POST'] : isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
       if (!methods.includes(request.method ?? '')) {
         response.setHeader('Allow', methods.join(', '));
         throw new AuthError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
@@ -117,13 +122,17 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       }
       const token = tokenFromCookie(request.headers.cookie, cookieName);
       const database = getDatabase();
-      if (path === '/api/auth/session' || isFee || isPreview || isAiContent || isMedia || isListing || isProfile || isProvider || isAdmin || isLocation || isLocationOptions || isGeocoding) {
+      if (path === '/api/auth/session' || isPayment || isFee || isPreview || isAiContent || isMedia || isListing || isProfile || isProvider || isAdmin || isLocation || isLocationOptions || isGeocoding) {
         const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: { ...publicAccount, displayName: true, isAdmin: true } } } }) : null;
         if (!session || session.expiresAt.getTime() <= Date.now()) {
           response.setHeader('Set-Cookie', cookie('', 0));
           throw new AuthError(401, 'UNAUTHENTICATED', 'Please sign in.');
         }
-        if (feeId) {
+        if (paymentId) {
+          send(200, request.method === 'POST'
+            ? await initializeListingPayment(database, session.account.id, paymentId, paymentInput(await body(request)), gateway, `${options.origin}/`)
+            : await readListingPayment(database, session.account.id, paymentId));
+        } else if (feeId) {
           send(200, await readListingFee(database, session.account.id, feeId));
         } else if (previewId) {
           send(200, await readListingPreview(database, session.account.id, previewId));

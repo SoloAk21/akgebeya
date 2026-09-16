@@ -5,7 +5,7 @@ class MediaError extends Error {
   constructor(message: string, readonly code: string) { super(message); }
 }
 
-export function mediaPanel(callbacks: { busy: (value: boolean) => void; expired: () => Promise<void> }) {
+export function mediaPanel(callbacks: { busy: (value: boolean) => void; expired: () => Promise<void>; changed?: () => void }) {
   function node<T extends HTMLElement>(id: string): T {
     const element = document.getElementById(id);
     if (!element) throw new Error(`Missing photo control: ${id}`);
@@ -119,7 +119,7 @@ export function mediaPanel(callbacks: { busy: (value: boolean) => void; expired:
     const current = epoch, file = method === 'POST' ? pending : undefined;
     if (method === 'POST' && !file) return;
     if (file) file.attempted = true;
-    loading = true; callbacks.busy(true); status.textContent = file ? 'Uploading and preparing your photo…' : 'Saving photo changes…';
+    loading = true; callbacks.busy(true); callbacks.changed?.(); status.textContent = file ? 'Uploading and preparing your photo…' : 'Saving photo changes…';
     try {
       const data = await request(method, body, suffix, file?.file, file?.uploadId); if (current !== epoch) return;
       collection = data; stale = false;

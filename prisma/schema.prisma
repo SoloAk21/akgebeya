@@ -54,6 +54,7 @@ model ListingDraft {
   mediaVersion Int @default(1)
   media ListingMedia[]
   aiContent ListingAiContent?
+  payment ListingPayment?
   countryId String @db.VarChar(2)
   regionId String @db.VarChar(40)
   cityId String @db.VarChar(40)
@@ -68,6 +69,25 @@ model ListingDraft {
   @@unique([accountId, requestId])
   @@index([accountId, createdAt, id])
   @@map("listing_draft")
+  @@schema("akgebeya_foundation")
+}
+
+model ListingPayment {
+  id String @id @default(uuid()) @db.Uuid
+  listingId String @unique @db.Uuid
+  requestId String @db.Uuid
+  reference String @unique @db.VarChar(40)
+  sourceVersion Int
+  mediaVersion Int
+  amount Decimal @db.Decimal(14, 2)
+  currency String @db.VarChar(3)
+  policyRevision String @db.VarChar(100)
+  status String @default("INITIALIZING") @db.VarChar(12)
+  checkoutUrl String? @db.VarChar(2048)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  listing ListingDraft @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("listing_payment")
   @@schema("akgebeya_foundation")
 }
 
