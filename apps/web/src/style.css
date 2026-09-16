@@ -82,6 +82,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px
 .photo-actions button { flex: 1 1 auto; padding: .65rem; font-size: .875rem; margin: 0; }
 #listing-media-selected, #listing-media-status { overflow-wrap: anywhere; line-height: 1.6; }
 #listing-media-file { padding: .6rem; }
+.listing-ai-panel { border-top: 1px solid #cbd8d0; margin-top: 1.5rem; padding-top: 1rem; }
+.listing-ai-language { background: #edf3ef; padding: 1rem; border-radius: 4px; margin: 1rem 0; overflow-wrap: anywhere; }
+.listing-ai-language h5 { font-size: 1rem; margin: 0 0 .75rem; }
+.listing-ai-language p { white-space: pre-wrap; line-height: 1.7; }
+#listing-ai-status, #listing-ai-readiness { overflow-wrap: anywhere; line-height: 1.6; }
 @media (max-width: 560px) { .photo-list { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .draft-controls { grid-template-columns: minmax(0, 1fr); gap: 0; } }
 @media (max-width: 560px) { .secondary { margin-left: 0; } }

@@ -120,6 +120,12 @@ photos remain owner-only and do not change listing details or publishing status.
 Run `npm run test:media`; see [the media guide](docs/listing-media.md) for limits,
 storage choices, migration, and verification.
 
+Feature 12 adds private AI-generated English and Amharic listing copy from saved,
+complete property details. Explicit consent is required before sending those details
+to Gemini. Generated text is stored separately and marked outdated after source edits.
+Set server-only `GEMINI_API_KEY`; see [the AI assistant guide](docs/listing-ai.md).
+Run `npm run test:listing-ai` for authorization, concurrency, persistence, and quota checks.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

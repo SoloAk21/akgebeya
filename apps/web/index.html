@@ -133,6 +133,17 @@
               <button id="listing-media-clear" type="button" class="secondary" disabled>Clear selected photo</button>
               <p class="note">Photo uploads, ordering, and removal save immediately. They do not save or discard changes in your property details above. Removing a photo permanently removes it from this property.</p>
             </div>
+            <div id="listing-ai" class="listing-ai-panel" hidden>
+              <h4>English and Amharic listing assistant</h4>
+              <p class="note" id="listing-ai-disclosure">With your permission, AkGebeya sends this property's saved title, description, property type, rent or sale choice, price, area, room counts, and subcity to Google Gemini to generate English and Amharic copy. Photos and exact coordinates are not sent. Avoid including personal or sensitive information in your title or description.</p>
+              <p id="listing-ai-readiness" class="note" role="status"></p>
+              <p id="listing-ai-status" role="status" aria-live="polite"></p>
+              <label class="confirmation" for="listing-ai-consent"><input id="listing-ai-consent" type="checkbox" aria-describedby="listing-ai-disclosure" /> I agree to send these saved property details to Google Gemini for this generation.</label>
+              <button id="listing-ai-generate" type="button" disabled>Generate English and Amharic copy</button>
+              <button id="listing-ai-reload" type="button" class="secondary">Reload saved copy</button>
+              <p class="note">Generated copy is saved separately and stays private. It does not replace your original details or publish your property. Review facts and translation accuracy before using it.</p>
+              <div id="listing-ai-output" hidden></div>
+            </div>
             <h4>Create a private draft</h4>
             <p id="listing-eligibility" class="note" role="status"></p>
             <form id="listing-form" aria-describedby="listing-snapshot-help">
