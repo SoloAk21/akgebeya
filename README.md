@@ -109,6 +109,11 @@ location. Drafts retain their own location snapshot and remain available after
 refresh. Run `npm run test:listing` for authorization, duplicate-request, snapshot,
 and persistence checks. See [the listing draft guide](docs/listing-drafts.md).
 
+Feature 10 adds private listing editing, partial draft saves, field validation, and
+a COMPLETE readiness state. Add a description, ETB price, area, and applicable room
+counts; the server checks completeness and rejects stale edits. COMPLETE listings
+remain private. Run `npm run test:listing-editing`; see [the editing guide](docs/listing-editing.md).
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

@@ -5,7 +5,8 @@ import { locationInput, locationOptions, readLocation, saveLocation } from './lo
 import { geocoder, GeocodingError, limitGeocoding, reverseInput, searchInput, type Geocoder } from './geocoding.js';
 import { applicationFields, applyAsProvider, providerInput } from './provider.js';
 import { decideApplication, readApplication, reviewInput, reviewQueue, UUID } from './admin.js';
-import { createListing, listingInput, listListings, readListing } from './listing.js';
+import { createListing, editListing, listingInput, listListings, readListing } from './listing.js';
+import { listingEditInput, ListingValidationError } from './listing-validation.js';
 import { AuthError, credentials, digest, hashPassword, sessionToken, tokenFromCookie, verifyPassword } from './auth-security.js';
 
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
@@ -23,7 +24,7 @@ export function authOptions(): AuthOptions {
   return { origin, secure: url.protocol === 'https:' };
 }
 
-async function body(request: IncomingMessage) {
+async function body(request: IncomingMessage, limit = 4096) {
   if (request.headers['content-type']?.split(';')[0]?.trim() !== 'application/json') {
     throw new AuthError(415, 'JSON_REQUIRED', 'Send JSON data.');
   }
@@ -32,7 +33,7 @@ async function body(request: IncomingMessage) {
   for await (const chunk of request.iterator({ destroyOnReturn: false })) {
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
     size += bytes.length;
-    if (size > 4096) {
+    if (size > limit) {
       request.resume();
       throw new AuthError(413, 'BODY_TOO_LARGE', 'Request is too large.');
     }
@@ -88,7 +89,7 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       if (!isListing && !isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !isGeocoding && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
         throw new AuthError(404, 'NOT_FOUND', 'Not found.');
       }
-      const methods = listingId ? ['GET'] : isListings ? ['GET', 'POST'] : isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
+      const methods = listingId ? ['GET', 'PUT'] : isListings ? ['GET', 'POST'] : isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
       if (!methods.includes(request.method ?? '')) {
         response.setHeader('Allow', methods.join(', '));
         throw new AuthError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
@@ -105,7 +106,9 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
           throw new AuthError(401, 'UNAUTHENTICATED', 'Please sign in.');
         }
         if (isListing) {
-          if (listingId) send(200, { listing: await readListing(database, session.account.id, listingId) });
+          if (listingId) send(200, { listing: request.method === 'PUT'
+            ? await editListing(database, session.account.id, listingId, listingEditInput(await body(request, 16384)))
+            : await readListing(database, session.account.id, listingId) });
           else if (request.method === 'POST') {
             const result = await createListing(database, session.account.id, listingInput(await body(request)));
             send(result.created ? 201 : 200, { listing: result.listing });
@@ -193,7 +196,7 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       if (cancellation.signal.aborted && response.destroyed) return;
       if (error instanceof AuthError) {
         if (error.status === 429) response.setHeader('Retry-After', error instanceof GeocodingError ? String(error.retryAfter) : '900');
-        send(error.status, { error: error.code, message: error.message });
+        send(error.status, { error: error.code, message: error.message, ...(error instanceof ListingValidationError ? { fieldErrors: error.fieldErrors } : {}) });
       } else if (path === '/api/auth/register' && typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
         send(409, { error: 'REGISTRATION_UNAVAILABLE', message: 'Unable to create this account. Try signing in.' });
       } else {

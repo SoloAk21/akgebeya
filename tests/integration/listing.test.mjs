@@ -86,7 +86,7 @@ test('private listing drafts enforce provider access, snapshot exact location, i
     assert.deepEqual((await call()).body, { listings: [saved] });
     assert.equal((await call({ path, token: tokens[5] })).status, 404);
     assert.equal((await call({ path: `/api/listings/${randomUUID()}` })).status, 404);
-    assert.equal((await call({ path, method: 'PUT' })).status, 405);
+    assert.equal((await call({ path, method: 'PATCH' })).status, 405);
     assert.deepEqual((await call({ token: tokens[5] })).body, { listings: [] });
     assert.equal((await call({ method: 'POST', data: { ...input, title: 'Different property' } })).status, 409);
 
@@ -113,6 +113,7 @@ test('private listing drafts enforce provider access, snapshot exact location, i
       transactionType: 'RENT', propertyType: 'HOUSE', countryId: location.countryId,
       regionId: location.regionId, cityId: location.cityId, subcityId: location.subcityId,
       latitude: location.latitude, longitude: location.longitude,
+      creationPayload: { title: 'Capacity test', transactionType: 'RENT', propertyType: 'HOUSE' },
     })) });
     const capacity = await Promise.all(Array.from({ length: 2 }, () => call({ method: 'POST', token: tokens[5],
       data: { ...input, requestId: randomUUID() } })));
@@ -157,7 +158,7 @@ async function checkConstraints(db, id) {
   await rejects(tx => tx.$executeRaw`UPDATE akgebeya_foundation.listing_draft SET "accountId" = ${randomUUID()}::uuid WHERE id = ${id}::uuid`, '23503');
   await rejects(tx => tx.$executeRaw`
     INSERT INTO akgebeya_foundation.listing_draft
-      (id, "accountId", "requestId", title, "transactionType", "propertyType", "countryId", "regionId", "cityId", "subcityId", latitude, longitude)
-    SELECT ${randomUUID()}::uuid, "accountId", "requestId", title, "transactionType", "propertyType", "countryId", "regionId", "cityId", "subcityId", latitude, longitude
+      (id, "accountId", "requestId", title, "transactionType", "propertyType", "countryId", "regionId", "cityId", "subcityId", latitude, longitude, "creationPayload")
+    SELECT ${randomUUID()}::uuid, "accountId", "requestId", title, "transactionType", "propertyType", "countryId", "regionId", "cityId", "subcityId", latitude, longitude, "creationPayload"
     FROM akgebeya_foundation.listing_draft WHERE id = ${id}::uuid`, '23505');
 }

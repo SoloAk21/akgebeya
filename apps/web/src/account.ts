@@ -179,6 +179,7 @@ form.addEventListener('submit', event => {
 });
 
 logout.addEventListener('click', () => {
+  if (!listings.canSignOut()) return;
   void (async () => {
     busy(true);
     try {

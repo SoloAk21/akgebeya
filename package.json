@@ -28,6 +28,7 @@
     "test:location": "node --import tsx --test tests/integration/location.test.mjs",
     "test:geocoding": "node --import tsx --test tests/integration/geocoding.test.mjs",
     "test:listing": "node --import tsx --test tests/integration/listing.test.mjs",
+    "test:listing-editing": "node --import tsx --test tests/integration/listing-editing.test.mjs",
     "admin:access": "tsx scripts/admin-access.ts",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . --max-warnings 0",

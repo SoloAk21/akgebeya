@@ -43,7 +43,14 @@ model ListingDraft {
   title String @db.VarChar(120)
   transactionType String @db.VarChar(4)
   propertyType String @db.VarChar(10)
-  status String @default("DRAFT") @db.VarChar(5)
+  status String @default("DRAFT") @db.VarChar(8)
+  creationPayload Json @db.JsonB
+  description String @default("") @db.Text
+  priceEtb Decimal? @db.Decimal(14, 2)
+  areaSqm Decimal? @db.Decimal(11, 2)
+  bedrooms Int?
+  bathrooms Int?
+  version Int @default(1)
   countryId String @db.VarChar(2)
   regionId String @db.VarChar(40)
   cityId String @db.VarChar(40)

@@ -6,8 +6,9 @@ Creation copies the account's saved, confirmed Addis Ababa location into the dra
 Changing the account location afterward does not move an existing draft.
 
 Drafts belong to the signed-in account and are never public. This milestone creates
-and reads drafts; completing property details, editing, media, payment, and publishing
-belong to later milestones. Each account may keep up to 50 drafts in this milestone.
+and reads drafts. [Feature 10](listing-editing.md) adds editing and completion;
+media, payment, and publishing belong to later milestones. Each account may keep
+up to 50 private listings, including COMPLETE listings.
 
 ## Data and authorization
 
@@ -19,8 +20,9 @@ Unknown fields, including owner IDs, status, and location overrides, are rejecte
 New drafts require an APPROVED provider application and a saved confirmed location.
 Existing drafts remain readable by their owner if eligibility later changes.
 Each account/request-ID pair is unique. Retrying an identical creation returns the
-original draft and its location snapshot; changing its payload with the same request
-ID produces a conflict. The browser retains a request ID for an uncertain retry.
+existing listing and its original location snapshot; changing the original creation
+payload with the same request ID produces a conflict. Later edits are never reset by
+a creation retry. The browser retains a request ID for an uncertain retry.
 Refreshing after an uncertain submission should be followed by reloading drafts
 before submitting a new request.
 

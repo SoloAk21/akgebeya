@@ -89,12 +89,37 @@
             <p id="provider-review" class="note"></p>
           </div>
           <div class="provider-panel" aria-labelledby="listing-heading">
-            <h3 id="listing-heading">Your property drafts</h3>
-            <p class="note">Start a private draft with a title and property type. Only you can view it. Public listing and editing are not available yet.</p>
+            <h3 id="listing-heading">Your private properties</h3>
+            <p class="note">Create and complete your property details privately. Only you can view them. A complete property is still private; publishing is not available yet.</p>
             <p id="listing-feedback" role="status" aria-live="polite"></p>
             <button id="listing-reload" type="button" class="secondary">Reload drafts</button>
             <ul id="listing-list" class="draft-list" aria-label="Your saved property drafts"></ul>
             <div id="listing-detail" class="draft-detail" aria-label="Selected draft details" hidden></div>
+            <div id="listing-editor" hidden>
+              <h4>Edit property details</h4>
+              <p id="listing-edit-status" role="status" aria-live="polite"></p>
+              <p class="note">The location above is fixed to this property. Save partial details as a draft, or mark the property complete when all required details are ready. Saving as a draft returns a complete property to draft status.</p>
+              <p id="listing-missing" class="note"></p>
+              <form id="listing-edit-form" novalidate>
+                <label for="listing-edit-title">Property title</label><input id="listing-edit-title" maxlength="240" required aria-describedby="listing-edit-title-error" /><p id="listing-edit-title-error" class="field-error"></p>
+                <div class="draft-controls">
+                  <div><label for="listing-edit-transactionType">Offer</label><select id="listing-edit-transactionType" aria-describedby="listing-edit-transactionType-error"><option value="RENT">For rent</option><option value="SALE">For sale</option></select><p id="listing-edit-transactionType-error" class="field-error"></p></div>
+                  <div><label for="listing-edit-propertyType">Property type</label><select id="listing-edit-propertyType" aria-describedby="listing-edit-propertyType-error"><option value="APARTMENT">Apartment</option><option value="HOUSE">House</option><option value="LAND">Land</option><option value="COMMERCIAL">Commercial</option></select><p id="listing-edit-propertyType-error" class="field-error"></p></div>
+                </div>
+                <label for="listing-edit-description">Description</label><textarea id="listing-edit-description" rows="5" maxlength="4000" aria-describedby="listing-description-help listing-edit-description-error"></textarea><p id="listing-description-help" class="note">Up to 2,000 characters. At least 20 are required to mark complete.</p><p id="listing-edit-description-error" class="field-error"></p>
+                <div class="draft-controls">
+                  <div><label id="listing-price-label" for="listing-edit-priceEtb">Monthly rent (ETB/month)</label><input id="listing-edit-priceEtb" inputmode="decimal" maxlength="15" aria-describedby="listing-edit-priceEtb-error" /><p id="listing-edit-priceEtb-error" class="field-error"></p></div>
+                  <div><label for="listing-edit-areaSqm">Area (m²)</label><input id="listing-edit-areaSqm" inputmode="decimal" maxlength="12" aria-describedby="listing-edit-areaSqm-error" /><p id="listing-edit-areaSqm-error" class="field-error"></p></div>
+                  <div id="listing-bedrooms-row"><label for="listing-edit-bedrooms">Bedrooms</label><input id="listing-edit-bedrooms" type="number" min="0" max="100" step="1" aria-describedby="listing-rooms-help listing-edit-bedrooms-error" /><p id="listing-edit-bedrooms-error" class="field-error"></p></div>
+                  <div id="listing-bathrooms-row"><label for="listing-edit-bathrooms">Bathrooms</label><input id="listing-edit-bathrooms" type="number" min="0" max="100" step="1" aria-describedby="listing-rooms-help listing-edit-bathrooms-error" /><p id="listing-edit-bathrooms-error" class="field-error"></p></div>
+                </div>
+                <p id="listing-rooms-help" class="note">Use 0 bedrooms for a studio. Homes and apartments need at least 1 bathroom to be complete. Bathrooms are optional for commercial properties; rooms do not apply to land.</p>
+                <p class="note">Enter prices in Ethiopian birr and areas in square metres, with up to two decimal places. A positive price and area are required to mark complete.</p>
+                <button id="listing-edit-save" type="submit">Save as draft</button>
+                <button id="listing-edit-complete" type="submit" class="secondary">Mark complete privately</button>
+              </form>
+              <button id="listing-discard" type="button" class="secondary">Discard changes and reload saved property</button>
+            </div>
             <h4>Create a private draft</h4>
             <p id="listing-eligibility" class="note" role="status"></p>
             <form id="listing-form" aria-describedby="listing-snapshot-help">
