@@ -1,7 +1,8 @@
 import { createHealthServer } from './server.js';
-import { checkDatabase, disconnectDatabase } from './database.js';
+import { checkDatabase, disconnectDatabase, getDatabase } from './database.js';
+import { authOptions, createAuthHandler } from './auth.js';
 
-const server = createHealthServer(checkDatabase);
+const server = createHealthServer(checkDatabase, createAuthHandler(getDatabase, authOptions()));
 server.on('error', (error: Error) => {
   console.error('AkGebeya API could not start:', error.message);
   process.exitCode = 1;

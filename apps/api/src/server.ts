@@ -1,11 +1,15 @@
-import { createServer } from 'node:http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
-export function createHealthServer(readiness?: () => Promise<void>) {
+export function createHealthServer(readiness?: () => Promise<void>, auth?: (request: IncomingMessage, response: ServerResponse) => Promise<void>) {
   return createServer((request, response) => {
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     const path = request.url?.split('?')[0];
+    if (path?.startsWith('/api/auth/') && auth) {
+      void auth(request, response);
+      return;
+    }
 
     if (path !== '/api/health' && path !== '/api/ready') {
       response.writeHead(404);

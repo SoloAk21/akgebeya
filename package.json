@@ -21,6 +21,7 @@
     "db:probe:write": "tsx apps/api/src/probe-cli.ts write",
     "db:probe:read": "tsx apps/api/src/probe-cli.ts read",
     "test:database": "node --import tsx --test tests/integration/database.test.mjs",
+    "test:auth": "node --import tsx --test tests/integration/auth.test.mjs",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . --max-warnings 0",
     "dev": "concurrently --kill-others --names api,web \"npm run dev --workspace @akgebeya/api\" \"npm run dev --workspace @akgebeya/web\"",

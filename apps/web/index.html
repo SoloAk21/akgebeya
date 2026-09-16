@@ -3,18 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="AkGebeya local application connection status." />
+    <meta name="description" content="Sign in to your AkGebeya account." />
     <meta name="theme-color" content="#123d35" />
-    <title>AkGebeya · Connection status</title>
+    <title>AkGebeya · Your account</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <header><a class="brand" href="/">AkGebeya<span>አክገበያ</span></a><span class="environment">LOCAL DEVELOPMENT</span></header>
     <main>
-      <p class="eyebrow">THE FOUNDATION OF A BETTER MOVE</p>
-      <h1>A place to begin.</h1>
-      <p class="intro">AkGebeya’s local workspace is ready. Check the connection before taking the next step.</p>
+      <p class="eyebrow">YOUR AKGEBEYA ACCOUNT</p>
+      <h1>Welcome home.</h1>
+      <section aria-labelledby="account-heading" id="account-section">
+        <h2 id="account-heading">Sign in</h2>
+        <p id="auth-status" role="status" aria-live="polite">Checking your session…</p>
+        <div id="signed-in" hidden><p>Signed in as <strong id="account-email"></strong></p><button id="logout" type="button">Sign out</button></div>
+        <form id="auth-form" hidden>
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="username" maxlength="254" required />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" minlength="15" maxlength="128" aria-describedby="password-help" required />
+          <p id="password-help" class="note">Use 15–128 characters. A few memorable words work well.</p>
+          <button id="auth-submit" type="submit">Sign in</button>
+          <button id="auth-switch" type="button" class="secondary">Create an account instead</button>
+        </form>
+        <button id="session-retry" type="button" class="secondary" hidden>Retry session check</button>
+      </section>
+      <details class="connection-panel"><summary>Service connection</summary>
       <section aria-labelledby="connection-heading">
         <div class="card-heading"><span class="section-number">01 / CONNECTION</span><span id="badge" data-state="loading">Checking</span></div>
         <div aria-live="polite" aria-atomic="true">
@@ -24,6 +39,7 @@
         </div>
         <button id="retry" type="button">Check again</button>
       </section>
+      </details>
       <p class="note">Development preview · Property listings are not available yet.</p>
     </main>
     <footer><span>AKGEBEYA</span><span>Built for Ethiopia.</span></footer>

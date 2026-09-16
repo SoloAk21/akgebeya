@@ -18,3 +18,36 @@ model FoundationProbe {
   @@map("foundation_probe")
   @@schema("akgebeya_foundation")
 }
+
+model Account {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @db.VarChar(256)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  sessions     Session[]
+
+  @@map("account")
+  @@schema("akgebeya_foundation")
+}
+
+model Session {
+  tokenHash String   @id @db.Char(64)
+  accountId String  @db.Uuid
+  expiresAt DateTime @db.Timestamptz(3)
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([expiresAt])
+  @@map("session")
+  @@schema("akgebeya_foundation")
+}
+
+model AuthAttempt {
+  key       String   @id @db.Char(64)
+  count     Int
+  expiresAt DateTime @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("auth_attempt")
+  @@schema("akgebeya_foundation")
+}

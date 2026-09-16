@@ -61,12 +61,20 @@ configure a development database, inspect it with `npm run db:inspect`, then app
 additive migration with `npm run db:migrate`. Save and read the controlled record using
 `npm run db:probe:write` and `npm run db:probe:read`. Run `npm run test:database` for real
 database verification. Database setup is isolated in the `akgebeya_foundation` schema;
-existing schemas and migration histories are preserved. There is no authentication or
-Telegram bot in this repository yet.
+existing schemas and migration histories are preserved.
+
+Feature 4 adds email/password accounts and database-backed sessions. Open the local
+page to create an account, sign in, refresh with the session intact, and sign out.
+Passwords are hashed and cookies are HttpOnly. Configure the exact `AUTH_ORIGIN`
+before deployment; production requires HTTPS. Email ownership verification, recovery,
+legacy-account linking, and Telegram sign-in are not implemented in this milestone.
+Run `npm run test:auth` against the development database for the real authentication
+integration test.
 
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 
-See [the database guide](docs/database-foundation.md) for connection, migration, and
+See [the authentication guide](docs/authentication.md) for sample data, exact curl
+commands, browser checks, and security details; [the database guide](docs/database-foundation.md) for connection, migration, and
 database verification steps, [the skeleton verification guide](docs/running-skeleton.md) for exact API and
 browser tests, and [the foundation record](docs/foundation.md) for milestone history.

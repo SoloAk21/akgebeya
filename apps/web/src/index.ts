@@ -1,4 +1,5 @@
 import { fetchHealth } from './health.js';
+import './account.js';
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
