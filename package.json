@@ -32,6 +32,7 @@
     "test:media": "node --import tsx --test tests/integration/media.test.mjs",
     "test:listing-ai": "node --import tsx --test tests/integration/listing-ai.test.mjs",
     "test:listing-preview": "node --import tsx --test tests/integration/listing-preview.test.mjs",
+    "test:listing-fee": "node --import tsx --test tests/integration/listing-fee.test.mjs",
     "admin:access": "tsx scripts/admin-access.ts",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . --max-warnings 0",

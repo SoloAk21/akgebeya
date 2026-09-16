@@ -131,6 +131,11 @@ price and property facts, location, provider details, and current English/Amhari
 copy. It remains private and does not trigger payment or publication. Run
 `npm run test:listing-preview`; see [the preview guide](docs/listing-preview.md).
 
+Feature 14 adds a server-calculated flat **1,000.00 ETB listing fee** for both rentals
+and sales. Approved providers can check the fee for a complete saved property;
+unsaved edits clear the previous result. No payment is taken. Run
+`npm run test:listing-fee`; see [the listing fee guide](docs/listing-fee.md).
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 
