@@ -8,7 +8,8 @@ Submitting an application grants no additional access or publishing permission.
 One application is allowed per account. An identical retry returns the existing
 application, including its original timestamp and current status. A different type
 returns a conflict; changing, withdrawing, or resubmitting an application is outside
-this milestone. Admin approval/rejection is Feature 7; no admin endpoint is included.
+this milestone. Admin approval/rejection is now documented in
+[Feature 7](admin-provider-verification.md).
 No identity documents, phone numbers, or business details are collected here.
 
 ## Database and safety

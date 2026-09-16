@@ -58,7 +58,7 @@ test('all provider types persist with isolated status, atomic retries and databa
     assert.equal(competing.filter(result => result.status === 200).length, 4);
     const saved = competing[0].body.application;
     for (const result of competing) assert.deepEqual(result.body.application, saved);
-    assert.deepEqual(Object.keys(saved).sort(), ['providerType', 'status', 'submittedAt']);
+    assert.deepEqual(Object.keys(saved).sort(), ['providerType', 'review', 'status', 'submittedAt']);
     assert.equal(saved.status, 'PENDING');
     assert.ok(Number.isFinite(Date.parse(saved.submittedAt)));
     assert.equal((await call({ token: tokens[1] })).body.application, null);

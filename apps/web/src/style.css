@@ -34,8 +34,11 @@ footer { border-top: 1px solid #d6dfd9; color: #587066; }
 #account-section h2 { margin-top: 0; }
 #auth-status { line-height: 1.6; color: #52625c; }
 label { display: block; font-weight: 600; margin: 1.25rem 0 .5rem; }
-input, select { display: block; width: 100%; border: 1px solid #8a9f93; border-radius: 4px; padding: .85rem; font: inherit; background: #fff; color: #193b34; }
-input:focus-visible, select:focus-visible { outline: 3px solid #bd762b; outline-offset: 2px; }
+input, select, textarea { display: block; width: 100%; border: 1px solid #8a9f93; border-radius: 4px; padding: .85rem; font: inherit; background: #fff; color: #193b34; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #bd762b; outline-offset: 2px; }
+.review-list { list-style: none; padding: 0; }
+.review-list button { margin-left: 0; max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+#admin-selected-details, #admin-selected-title { overflow-wrap: anywhere; line-height: 1.6; }
 .provider-panel { border-top: 1px solid #d6dfd9; margin-top: 2rem; padding-top: 1rem; }
 .provider-panel h3 { font-size: 1.25rem; }
 #provider-feedback { line-height: 1.6; }

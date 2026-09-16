@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { profileInput } from './profile.js';
 import { applicationFields, applyAsProvider, providerInput } from './provider.js';
+import { decideApplication, readApplication, reviewInput, reviewQueue, UUID } from './admin.js';
 import { AuthError, credentials, digest, hashPassword, sessionToken, tokenFromCookie, verifyPassword } from './auth-security.js';
 
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
@@ -64,10 +65,15 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
     try {
       const isProfile = path === '/api/profile';
       const isProvider = path === '/api/provider-application';
-      if (!isProfile && !isProvider && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
+      const isAccess = path === '/api/admin/access';
+      const isQueue = path === '/api/admin/provider-applications';
+      const reviewId = path?.match(/^\/api\/admin\/provider-applications\/([^/]+)$/)?.[1];
+      if (reviewId && !UUID.test(reviewId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid application ID.');
+      const isAdmin = isAccess || isQueue || Boolean(reviewId);
+      if (!isAdmin && !isProfile && !isProvider && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
         throw new AuthError(404, 'NOT_FOUND', 'Not found.');
       }
-      const methods = isProvider ? ['GET', 'POST'] : isProfile ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
+      const methods = reviewId ? ['GET', 'POST'] : isAdmin ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
       if (!methods.includes(request.method ?? '')) {
         response.setHeader('Allow', methods.join(', '));
         throw new AuthError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
@@ -77,13 +83,22 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       }
       const token = tokenFromCookie(request.headers.cookie, cookieName);
       const database = getDatabase();
-      if (path === '/api/auth/session' || isProfile || isProvider) {
-        const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: { ...publicAccount, displayName: true } } } }) : null;
+      if (path === '/api/auth/session' || isProfile || isProvider || isAdmin) {
+        const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: { ...publicAccount, displayName: true, isAdmin: true } } } }) : null;
         if (!session || session.expiresAt.getTime() <= Date.now()) {
           response.setHeader('Set-Cookie', cookie('', 0));
           throw new AuthError(401, 'UNAUTHENTICATED', 'Please sign in.');
         }
-        if (isProvider) {
+        if (isAdmin) {
+          if (isAccess) { send(200, { isAdmin: session.account.isAdmin }); return; }
+          if (!session.account.isAdmin) throw new AuthError(403, 'ADMIN_REQUIRED', 'Administrator access is required.');
+          if (reviewId) {
+            const application = request.method === 'POST'
+              ? await decideApplication(database, session.account.id, reviewId, reviewInput(await body(request)))
+              : await readApplication(database, reviewId);
+            send(200, { application });
+          } else send(200, await reviewQueue(database, session.account.id, request.url!));
+        } else if (isProvider) {
           if (request.method === 'POST') {
             const result = await applyAsProvider(database, session.account.id, providerInput(await body(request)));
             send(result.created ? 201 : 200, { application: result.application });
@@ -94,7 +109,7 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
         } else if (isProfile) {
           const profile = request.method === 'PUT'
             ? await database.account.update({ where: { id: session.account.id }, data: profileInput(await body(request)), select: { ...publicAccount, displayName: true } })
-            : session.account;
+            : { id: session.account.id, email: session.account.email, displayName: session.account.displayName };
           send(200, { profile });
         } else {
           send(200, { user: { id: session.account.id, email: session.account.email } });
@@ -139,13 +154,14 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       if (error instanceof AuthError) {
         if (error.status === 429) response.setHeader('Retry-After', '900');
         send(error.status, { error: error.code, message: error.message });
-      } else if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+      } else if (path === '/api/auth/register' && typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
         send(409, { error: 'REGISTRATION_UNAVAILABLE', message: 'Unable to create this account. Try signing in.' });
       } else {
         // Log only an allowlisted diagnostic code, never error messages, requests, or credentials.
         const code = typeof error === 'object' && error !== null && 'code' in error
           && typeof error.code === 'string' && /^P\d{4}$/.test(error.code) ? error.code : 'UNEXPECTED';
-        console.error('Account operation failed:', code);
+        const timedOut = error instanceof Error && /expired|timed out|timeout/i.test(error.message);
+        console.error('Account operation failed:', code, timedOut ? 'TIMEOUT' : 'OTHER');
         send(503, { error: 'SERVICE_UNAVAILABLE', message: 'The account service is temporarily unavailable. Please try again.' });
       }
     }

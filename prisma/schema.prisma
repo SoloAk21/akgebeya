@@ -23,10 +23,12 @@ model Account {
   id           String    @id @default(uuid()) @db.Uuid
   email        String    @unique @db.VarChar(254)
   displayName  String?   @db.VarChar(80)
+  isAdmin      Boolean   @default(false)
   passwordHash String    @db.VarChar(256)
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   sessions     Session[]
   providerApplication ProviderApplication?
+  providerReviews ProviderReview[]
 
   @@map("account")
   @@schema("akgebeya_foundation")
@@ -78,7 +80,22 @@ model ProviderApplication {
   status       ProviderVerificationStatus @default(PENDING)
   submittedAt  DateTime @default(now()) @db.Timestamptz(3)
   account      Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  review       ProviderReview?
 
   @@map("provider_application")
+  @@schema("akgebeya_foundation")
+}
+
+model ProviderReview {
+  accountId String @id @db.Uuid
+  reviewerId String @db.Uuid
+  decision ProviderVerificationStatus
+  reason String? @db.VarChar(500)
+  reviewedAt DateTime @default(now()) @db.Timestamptz(3)
+  application ProviderApplication @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+  reviewer Account @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([reviewerId])
+  @@map("provider_review")
   @@schema("akgebeya_foundation")
 }

@@ -78,9 +78,15 @@ Run `npm run test:profile` for real database and account-isolation checks. See
 
 Feature 6 adds provider applications for Owners, Brokers, Agents, Agencies, and
 Developers. Signed-in users can submit once and see their saved verification status.
-Applications start pending; admin review is the next milestone. Run
+Applications start pending; Feature 7 adds admin review. Run
 `npm run test:provider` for persistence, concurrency, and authorization checks. See
 [the provider onboarding guide](docs/provider-onboarding.md) for exact verification steps.
+
+Feature 7 adds an admin provider-review queue, protected approval/rejection actions,
+and an atomic review audit. Providers see their decision and rejection reason after
+reloading. No account is an admin by default; operators grant/revoke trusted account
+UUIDs with `npm run admin:access -- grant|revoke ACCOUNT_UUID`. See
+[the admin verification guide](docs/admin-provider-verification.md) for setup and tests.
 
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.

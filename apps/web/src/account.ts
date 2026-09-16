@@ -1,4 +1,5 @@
 import { providerPanel } from './provider.js';
+import { adminPanel } from './admin.js';
 
 function control<T extends HTMLElement>(id: string) {
   const node = document.getElementById(id);
@@ -27,6 +28,10 @@ const provider = providerPanel({ busy, expired: async () => {
   await showUser();
   status.textContent = 'Your session has ended. Please sign in again.';
 } });
+const admin = adminPanel({ busy, expired: async () => {
+  await showUser();
+  status.textContent = 'Your session has ended. Please sign in again.';
+} });
 
 function busy(value: boolean) {
   for (const input of [email, password, submit, toggle, logout, retry]) input.disabled = value;
@@ -36,6 +41,7 @@ function busy(value: boolean) {
   profileRetry.disabled = value;
   profileForm.setAttribute('aria-busy', String(value));
   provider.setBusy(value);
+  admin.setBusy(value);
 }
 
 async function request(path: string, data?: { email: string; password: string } | Record<string, never>) {
@@ -50,6 +56,7 @@ async function request(path: string, data?: { email: string; password: string } 
 
 async function showUser(accountEmail?: string) {
   provider.reset();
+  admin.reset();
   profileReady = false;
   displayName.value = '';
   profileStatus.textContent = '';
@@ -63,6 +70,7 @@ async function showUser(accountEmail?: string) {
   if (accountEmail) {
     await loadProfile();
     if (!signedIn.hidden) await provider.load();
+    if (!signedIn.hidden) await admin.initialize();
   }
 }
 

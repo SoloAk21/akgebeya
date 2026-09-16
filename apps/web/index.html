@@ -49,7 +49,32 @@
               <div><dt>Submitted</dt><dd id="provider-submitted"></dd></div>
             </dl>
             <button id="provider-reload" type="button" class="secondary" hidden>Reload application</button>
-            <p class="note">Review decisions are not available in this development preview yet.</p>
+            <p id="provider-review" class="note"></p>
+          </div>
+          <div id="admin-panel" class="provider-panel" aria-labelledby="admin-heading" hidden>
+            <h3 id="admin-heading">Provider review</h3>
+            <p class="note">Review the account and requested provider type before recording a decision. Email ownership and identity documents have not been verified by this app.</p>
+            <p id="admin-feedback" role="status" aria-live="polite"></p>
+            <button id="admin-reload" type="button">Reload review queue</button>
+            <ul id="admin-list" class="review-list"></ul>
+            <button id="admin-next" type="button" class="secondary" hidden>Next applications</button>
+            <div id="admin-selected" hidden>
+              <h4 id="admin-selected-title"></h4>
+              <p id="admin-selected-details"></p>
+              <form id="admin-review-form">
+                <label for="admin-decision">Decision</label>
+                <select id="admin-decision" required>
+                  <option value="">Choose a decision</option>
+                  <option value="APPROVED">Approve</option>
+                  <option value="REJECTED">Reject</option>
+                </select>
+                <label for="admin-reason">Reason (required for rejection)</label>
+                <textarea id="admin-reason" maxlength="500" rows="3" aria-describedby="admin-reason-help"></textarea>
+                <p id="admin-reason-help" class="note">Up to 500 characters. The provider will see this note. Saved decisions cannot be changed here.</p>
+                <button id="admin-save" type="submit">Save decision</button>
+              </form>
+              <button id="admin-refresh-selected" type="button" class="secondary">Reload selected application</button>
+            </div>
           </div>
           <button id="logout" type="button" class="secondary">Sign out</button>
         </div>

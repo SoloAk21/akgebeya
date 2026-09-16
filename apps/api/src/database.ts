@@ -15,7 +15,9 @@ export function getDatabase(): PrismaClient {
     connectionString, max: 5, connectionTimeoutMillis: 5000,
     query_timeout: 5000, statement_timeout: 5000,
   }, { schema: 'akgebeya_foundation' });
-  client = new PrismaClient({ adapter, log: [] });
+  // Multi-statement transactions include several network round trips to Neon.
+  // Keep each query bounded to 5s, but allow the complete transaction up to 15s.
+  client = new PrismaClient({ adapter, log: [], transactionOptions: { maxWait: 5000, timeout: 15000 } });
   return client;
 }
 

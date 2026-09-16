@@ -12,7 +12,8 @@ export function providerInput(value: unknown): { providerType: ProviderType } {
   return { providerType: value.providerType as ProviderType };
 }
 
-export const applicationFields = { providerType: true, status: true, submittedAt: true } as const;
+export const applicationFields = { providerType: true, status: true, submittedAt: true,
+  review: { select: { reason: true, reviewedAt: true } } } as const;
 
 export async function applyAsProvider(database: PrismaClient, accountId: string, input: { providerType: ProviderType }) {
   return database.$transaction(async tx => {

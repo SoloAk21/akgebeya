@@ -1,4 +1,4 @@
-type Application = { providerType: string; status: string; submittedAt: string };
+type Application = { providerType: string; status: string; submittedAt: string; review: { reason: string | null; reviewedAt: string } | null };
 const types: Record<string, string> = { OWNER: 'Owner', BROKER: 'Broker', AGENT: 'Agent', AGENCY: 'Agency', DEVELOPER: 'Developer' };
 const statuses: Record<string, string> = { PENDING: 'Pending review', APPROVED: 'Approved', REJECTED: 'Rejected' };
 
@@ -31,7 +31,7 @@ export function providerPanel(options: { busy: (value: boolean) => void; expired
     details.hidden = true;
     form.hidden = true;
     reload.hidden = true;
-    for (const id of ['provider-saved-type', 'provider-saved-status', 'provider-submitted']) node(id).textContent = '';
+    for (const id of ['provider-saved-type', 'provider-saved-status', 'provider-submitted', 'provider-review']) node(id).textContent = '';
     setBusy(true);
   }
   async function request(save: boolean) {
@@ -56,6 +56,8 @@ export function providerPanel(options: { busy: (value: boolean) => void; expired
       node('provider-saved-type').textContent = types[saved.providerType]!;
       node('provider-saved-status').textContent = statuses[saved.status]!;
       node('provider-submitted').textContent = new Date(saved.submittedAt).toLocaleString();
+      node('provider-review').textContent = saved.review
+        ? `Reviewed ${new Date(saved.review.reviewedAt).toLocaleString()}.${saved.review.reason ? ` ${saved.review.reason}` : ''}` : '';
       feedback.textContent = saved.status === 'PENDING'
         ? 'Your application is saved and awaiting review. You are not verified yet.'
         : `Your application status is ${statuses[saved.status]!.toLowerCase()}.`;
