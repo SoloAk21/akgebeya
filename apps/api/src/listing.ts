@@ -73,7 +73,7 @@ export async function listListings(database: PrismaClient, accountId: string) {
   return rows.map(publicListing);
 }
 
-export async function readListing(database: PrismaClient, accountId: string, id: string) {
+export async function readListing(database: Pick<PrismaClient, '$queryRaw'>, accountId: string, id: string) {
   const [row] = await database.$queryRaw<ListingRow[]>`
     SELECT * FROM akgebeya_foundation.listing_draft WHERE id = ${id}::uuid AND "accountId" = ${accountId}::uuid`;
   if (!row) throw new AuthError(404, 'LISTING_NOT_FOUND', 'Draft not found.');

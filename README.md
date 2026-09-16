@@ -126,6 +126,11 @@ to Gemini. Generated text is stored separately and marked outdated after source 
 Set server-only `GEMINI_API_KEY`; see [the AI assistant guide](docs/listing-ai.md).
 Run `npm run test:listing-ai` for authorization, concurrency, persistence, and quota checks.
 
+Feature 13 adds an owner-only saved-property preview with a photo gallery, exact
+price and property facts, location, provider details, and current English/Amharic
+copy. It remains private and does not trigger payment or publication. Run
+`npm run test:listing-preview`; see [the preview guide](docs/listing-preview.md).
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 

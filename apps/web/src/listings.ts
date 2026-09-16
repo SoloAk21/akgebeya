@@ -1,5 +1,6 @@
 import { mediaPanel } from './media.js';
 import { listingAiPanel } from './listing-ai.js';
+import { listingPreviewPanel } from './listing-preview.js';
 
 type Listing = {
   id: string; title: string; transactionType: 'RENT' | 'SALE';
@@ -57,6 +58,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
   const edits = Object.fromEntries(editKeys.map(key => [key, node<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`listing-edit-${key}`)])) as Record<EditKey, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
   const media = mediaPanel(callbacks);
   const assistant = listingAiPanel(callbacks);
+  const preview = listingPreviewPanel(callbacks);
   let ready = false, blocked = true, eligible = false, approved = false, version = 0;
   let selected: Listing | undefined, dirty = false, conflict = false;
   let controller = new AbortController();
@@ -77,6 +79,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     editForm.setAttribute('aria-busy', String(value));
     media.setBusy(value, approved && ready);
     assistant.setBusy(value, approved && ready, dirty);
+    preview.setBusy(value, dirty);
   }
   function reset() {
     version++; controller.abort(); controller = new AbortController();
@@ -84,6 +87,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     selected = undefined; dirty = false; conflict = false; editForm.reset(); editor.hidden = true;
     media.reset();
     assistant.reset();
+    preview.reset();
     editStatus.textContent = ''; missing.textContent = ''; clearErrors();
     form.reset(); title.setCustomValidity('');
     list.replaceChildren(); detail.replaceChildren(); detail.hidden = true;
@@ -125,6 +129,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     selected = item; dirty = false; conflict = false; editor.hidden = false;
     media.select(item.id, approved && ready);
     assistant.select(item, approved && ready);
+    preview.select(item.id);
     for (const key of editKeys) edits[key].value = String(item[key] ?? '');
     clearErrors(); updateEditor();
     missing.textContent = item.missingFields.length
@@ -237,6 +242,7 @@ export function listingsPanel(callbacks: { busy: (value: boolean) => void; expir
     edits[key].addEventListener('input', () => {
       dirty = true; edits[key].removeAttribute('aria-invalid'); node(`listing-edit-${key}-error`).textContent = '';
       assistant.setBusy(blocked, approved && ready, dirty);
+      preview.setBusy(blocked, dirty);
       if (!conflict) editStatus.textContent = 'You have unsaved changes.';
       if (key === 'transactionType' || key === 'propertyType') updateEditor();
     });

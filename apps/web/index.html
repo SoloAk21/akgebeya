@@ -95,6 +95,8 @@
             <button id="listing-reload" type="button" class="secondary">Reload drafts</button>
             <ul id="listing-list" class="draft-list" aria-label="Your saved property drafts"></ul>
             <div id="listing-detail" class="draft-detail" aria-label="Selected draft details" hidden></div>
+            <button id="listing-preview-open" type="button" class="secondary" disabled hidden>Preview saved property</button>
+            <p id="listing-preview-help" class="note" hidden></p>
             <div id="listing-editor" hidden>
               <h4>Edit property details</h4>
               <p id="listing-edit-status" role="status" aria-live="polite"></p>
@@ -209,6 +211,15 @@
       </details>
       <p class="note">Development preview · Private drafts are available to approved providers. Public property listings are not available yet.</p>
     </main>
+    <dialog id="listing-preview-dialog" aria-labelledby="listing-preview-heading" aria-describedby="listing-preview-private">
+      <div class="preview-toolbar"><h2 id="listing-preview-heading">Your property preview</h2><button id="listing-preview-close" type="button" class="secondary">Close preview</button></div>
+      <p id="listing-preview-private" class="preview-private">Private preview · This property has not been published.</p>
+      <p id="listing-preview-status" role="status" aria-live="polite"></p>
+      <p id="listing-preview-incomplete" class="preview-warning" hidden></p>
+      <div class="preview-controls"><div><label for="listing-preview-language">Preview language</label><select id="listing-preview-language"><option value="original">Original saved text</option><option value="en" hidden disabled>English generated copy</option><option value="am" hidden disabled>አማርኛ / Amharic generated copy</option></select></div><button id="listing-preview-reload" type="button" class="secondary">Refresh preview</button></div>
+      <p id="listing-preview-copy-notice" class="note"></p>
+      <div id="listing-preview-content"></div>
+    </dialog>
     <footer><span>AKGEBEYA</span><span>Built for Ethiopia.</span></footer>
     <script type="module" src="/src/index.ts"></script>
   </body>
