@@ -7,6 +7,7 @@ import { createAuthHandler } from '../../apps/api/src/auth.ts';
 import { getDatabase, disconnectDatabase } from '../../apps/api/src/database.ts';
 import { digest, sessionToken } from '../../apps/api/src/auth-security.ts';
 import { Prisma } from '../../apps/api/src/generated/prisma/client.ts';
+import { createGeocoder } from '../../apps/api/src/geocoding.ts';
 
 const input = { countryId: 'ET', regionId: 'addis-ababa', cityId: 'addis-ababa-city',
   subcityId: 'bole', latitude: 8.9806, longitude: 38.7578, confirmed: true };
@@ -17,7 +18,7 @@ test('location persists one confirmed PostGIS point per account with validation,
   const origin = 'http://127.0.0.1:3000';
   let server;
   async function start() {
-    server = createHealthServer(undefined, createAuthHandler(getDatabase, { origin, secure: false }));
+    server = createHealthServer(undefined, createAuthHandler(getDatabase, { origin, secure: false }, createGeocoder({ key: () => undefined })));
     server.listen(0, '127.0.0.1'); await once(server, 'listening');
   }
   async function stop() { await new Promise(resolve => server.close(resolve)); }
@@ -77,8 +78,8 @@ test('location persists one confirmed PostGIS point per account with validation,
     const competing = await Promise.all(Array.from({ length: 4 }, () => call({ method: 'PUT' })));
     for (const result of competing) assert.equal(result.status, 200);
     const saved = competing[0].body.location;
-    assert.deepEqual(Object.keys(saved).sort(), [...Object.keys(input), 'updatedAt'].sort());
-    assert.deepEqual(saved, { ...input, updatedAt: saved.updatedAt });
+    assert.deepEqual(Object.keys(saved).sort(), [...Object.keys(input), 'updatedAt', 'address'].sort());
+    assert.deepEqual(saved, { ...input, updatedAt: saved.updatedAt, address: null });
     assert.ok(Number.isFinite(Date.parse(saved.updatedAt)));
     for (const result of competing) assert.deepEqual(result.body.location, saved);
     assert.deepEqual((await call({ method: 'PUT' })).body.location, saved);
@@ -92,7 +93,7 @@ test('location persists one confirmed PostGIS point per account with validation,
     assert.ok(race.some(result => JSON.stringify(result.body.location) === JSON.stringify(winner)));
     assert.ok(alternatives.some(data => Object.entries(data).every(([key, value]) => winner[key] === value)));
     assert.notEqual(winner.updatedAt, saved.updatedAt);
-    assert.deepEqual((await call({ method: 'PUT', data: { ...winner, updatedAt: undefined } })).body.location, winner);
+    assert.deepEqual((await call({ method: 'PUT', data: { ...winner, updatedAt: undefined, address: undefined } })).body.location, winner);
     await stop(); await disconnectDatabase(); await start();
     assert.deepEqual((await call()).body.location, winner);
     // The storage assertions below also verify longitude/latitude ordering and database constraints.

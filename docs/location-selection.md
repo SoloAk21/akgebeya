@@ -46,8 +46,9 @@ installed PostGIS namespace rather than assuming a search path. Existing schemas
 and their data are untouched. Account deletion cascades to its saved selection.
 
 Every endpoint requires a valid session. The server derives ownership from that
-session, never from a submitted ID. JSON has exactly seven allowed fields; extra
-fields, timestamps, geometry, and account IDs are rejected. Writes require the
+session, never from a submitted ID. JSON requires the seven selection fields and
+allows optional `addressLanguage: "en" | "am"`; other fields, timestamps, geometry,
+and account IDs are rejected. Writes require the
 configured exact Origin, application/json, and a body of at most 4096 bytes.
 Parameterized queries protect database input. Responses are private and no-store;
 they expose neither account IDs nor credentials. There is no per-account-ID route.
@@ -89,7 +90,8 @@ account-deletion cleanup.
 - `GET /api/location`: 200 with `{ "location": null }` before saving; otherwise
   `location` has `countryId`, `regionId`, `cityId`, `subcityId`, `latitude`,
   `longitude`, `confirmed: true`, and an ISO `updatedAt` timestamp.
-- `PUT /api/location`: exactly the seven selection fields, excluding `updatedAt`;
+- `PUT /api/location`: the seven required selection fields, with optional
+  `addressLanguage: "en" | "am"`, excluding `updatedAt`;
   200 with the saved `location`, including on first creation and equal retries.
 - Invalid selection: 400 `INVALID_LOCATION`; malformed JSON: 400 `INVALID_JSON`.
 - Missing/expired/revoked session: 401 `UNAUTHENTICATED`.

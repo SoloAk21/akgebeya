@@ -52,5 +52,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px
 #location-map .leaflet-control a { color: #174c3f; }
 .confirmation { display: flex; align-items: flex-start; gap: .7rem; line-height: 1.5; }
 .confirmation input { width: 20px; height: 20px; flex: 0 0 20px; margin-top: .2rem; }
+.location-device { width: 100%; }
+#location-suggestions { border: 1px solid #8a9f93; border-radius: 4px; max-height: 290px; overflow-y: auto; }
+#location-suggestions button, .recent-location { display: block; width: 100%; background: #f4f8f5; color: #193b34; text-align: left; margin: 0; border-radius: 0; border-bottom: 1px solid #d6dfd9; overflow-wrap: anywhere; font-weight: 400; }
+#location-suggestions button:hover, #location-suggestions button[aria-selected=true] { background: #dcece1; }
+#location-recent { margin-top: 1rem; }
+.recent-location { font-size: .9rem; }
+.location-hierarchy { margin-top: 1.5rem; }
+.location-hierarchy summary { cursor: pointer; padding: .75rem 0; }
+.selected-address { background: #edf3ef; padding: 1rem; margin-top: 1rem; border-radius: 4px; overflow-wrap: anywhere; }
+.selected-address p { line-height: 1.6; margin: .5rem 0 0; }
+.location-pin span { display: block; width: 28px; height: 28px; background: #174c3f; border: 3px solid white; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: 0 2px 5px #0006; }
+.location-pin:focus { outline: 3px solid #bd762b; }
 @media (max-width: 560px) { .secondary { margin-left: 0; } }
 @media (max-width: 560px) { header { align-items: flex-start; } .environment { max-width: 90px; font-size: .75rem; text-align: right; } .brand span { display: block; margin: .3rem 0 0; } main { margin: 3rem auto; } section { padding: 1.25rem; } dl div { flex-direction: column; gap: .3rem; } dd { text-align: left; } button { width: 100%; } footer { font-size: .75rem; } }

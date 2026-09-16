@@ -44,6 +44,7 @@ model AccountLocation {
   latitude Float @db.DoublePrecision
   longitude Float @db.DoublePrecision
   confirmed Boolean
+  address Json? @db.JsonB
   point Unsupported("geometry(Point,4326)") @default(dbgenerated())
   updatedAt DateTime @default(now()) @db.Timestamptz(3)
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)

@@ -26,6 +26,7 @@
     "test:provider": "node --import tsx --test tests/integration/provider.test.mjs",
     "test:admin": "node --import tsx --test tests/integration/admin.test.mjs",
     "test:location": "node --import tsx --test tests/integration/location.test.mjs",
+    "test:geocoding": "node --import tsx --test tests/integration/geocoding.test.mjs",
     "admin:access": "tsx scripts/admin-access.ts",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "eslint . --max-warnings 0",

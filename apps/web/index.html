@@ -29,18 +29,36 @@
           <button id="profile-retry" type="button" class="secondary" hidden>Reload profile</button>
           <div class="provider-panel" aria-labelledby="location-heading">
             <h3 id="location-heading">Your location</h3>
-            <p class="note">Currently available in Addis Ababa’s 11 subcities. Choose your subcity and confirm a pin. The pin is your selection; official subcity boundaries are not verified.</p>
+            <p class="note">Find your property, adjust the pin, and confirm its exact location. Search covers Ethiopia; saving is currently available in Addis Ababa’s 11 subcities.</p>
             <p id="location-feedback" role="status" aria-live="polite"></p>
             <form id="location-form">
+              <button id="location-device" type="button" class="location-device" disabled>Use My Current Location</button>
+              <p id="location-device-status" role="status"></p>
+              <p class="note">Only requested when you tap the button. Search text and selected coordinates are sent through AkGebeya to Geoapify to find addresses. Nothing is saved to your account until you confirm.</p>
+              <label for="location-search">Search location</label>
+              <input id="location-search" type="search" role="combobox" aria-autocomplete="list" aria-controls="location-suggestions" aria-expanded="false" aria-describedby="location-search-status" autocomplete="off" maxlength="120" placeholder="Neighborhood, street, landmark…" disabled />
+              <div id="location-suggestions" role="listbox" aria-label="Location suggestions" hidden></div>
+              <p id="location-search-status" class="note" role="status">Type in English or Amharic to find a place.</p>
+              <label for="location-language">Address language</label>
+              <select id="location-language"><option value="en">English</option><option value="am">አማርኛ / Amharic</option></select>
+              <div id="location-recent" aria-label="Recent selections"></div>
+              <button id="location-clear-recent" type="button" class="secondary" hidden>Clear recent selections</button>
+              <p class="note">Recent selections last only for this signed-in page session. Suggestions favor your selected map area when available.</p>
+              <details class="location-hierarchy"><summary>Area details</summary>
               <label for="location-country">Country</label><select id="location-country" required disabled></select>
               <label for="location-region">Region / city administration</label><select id="location-region" required disabled></select>
               <label for="location-city">City</label><select id="location-city" required disabled></select>
+              </details>
               <label for="location-subcity">Subcity</label><select id="location-subcity" required disabled></select>
-              <p class="note">Click the map to place a pin, or enter latitude and longitude below. Supported service area: 8.8–9.15° N, 38.6–39° E.</p>
+              <p class="note">Drag the pin or tap the map to adjust. Choose your subcity yourself; map data does not verify official subcity boundaries.</p>
               <div id="location-map" role="region" aria-label="Choose a location on the map"></div>
               <p id="location-map-status" class="note" role="status"></p>
+              <div class="selected-address"><strong>Address near your pin</strong><p id="location-address" role="status">No location selected yet.</p><p class="note">Addresses may describe a nearby place. The pin always defines your exact selection.</p></div>
+              <button id="location-address-retry" type="button" class="secondary" hidden>Retry address lookup</button>
+              <p class="note">Search and addresses: <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Powered by Geoapify</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a></p>
               <label for="location-latitude">Latitude</label><input id="location-latitude" type="number" step="any" required disabled />
               <label for="location-longitude">Longitude</label><input id="location-longitude" type="number" step="any" required disabled />
+              <p class="note">Current saving area: 8.8–9.15° N, 38.6–39° E. You can enter coordinates to adjust the pin without dragging.</p>
               <label class="confirmation" for="location-confirmed"><input id="location-confirmed" type="checkbox" required disabled /> I confirm this pin matches my selected location.</label>
               <button id="location-save" type="submit" disabled>Save location</button>
             </form>

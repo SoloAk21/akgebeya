@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { profileInput } from './profile.js';
 import { locationInput, locationOptions, readLocation, saveLocation } from './location.js';
+import { geocoder, GeocodingError, limitGeocoding, reverseInput, searchInput, type Geocoder } from './geocoding.js';
 import { applicationFields, applyAsProvider, providerInput } from './provider.js';
 import { decideApplication, readApplication, reviewInput, reviewQueue, UUID } from './admin.js';
 import { AuthError, credentials, digest, hashPassword, sessionToken, tokenFromCookie, verifyPassword } from './auth-security.js';
@@ -57,26 +58,32 @@ async function throttle(database: PrismaClient, ip: string, email: string) {
   }
 }
 
-export function createAuthHandler(getDatabase: () => PrismaClient, options: AuthOptions) {
+export function createAuthHandler(getDatabase: () => PrismaClient, options: AuthOptions, lookup: Geocoder = geocoder) {
   const cookieName = options.secure ? '__Host-akgebeya_session' : 'akgebeya_session';
   const cookie = (token: string, seconds: number) => `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${seconds}${options.secure ? '; Secure' : ''}`;
   return async (request: IncomingMessage, response: ServerResponse) => {
     const path = request.url?.split('?')[0];
     const send = (status: number, data: unknown) => { response.writeHead(status); response.end(JSON.stringify(data)); };
+    const cancellation = new AbortController();
+    const cancel = () => cancellation.abort();
+    response.once('close', cancel);
     try {
       const isProfile = path === '/api/profile';
       const isLocation = path === '/api/location';
       const isLocationOptions = path === '/api/location-options';
+      const isSearch = path === '/api/location-search';
+      const isReverse = path === '/api/location-reverse';
+      const isGeocoding = isSearch || isReverse;
       const isProvider = path === '/api/provider-application';
       const isAccess = path === '/api/admin/access';
       const isQueue = path === '/api/admin/provider-applications';
       const reviewId = path?.match(/^\/api\/admin\/provider-applications\/([^/]+)$/)?.[1];
       if (reviewId && !UUID.test(reviewId)) throw new AuthError(400, 'INVALID_ID', 'Use a valid application ID.');
       const isAdmin = isAccess || isQueue || Boolean(reviewId);
-      if (!isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
+      if (!isAdmin && !isProfile && !isProvider && !isLocation && !isLocationOptions && !isGeocoding && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
         throw new AuthError(404, 'NOT_FOUND', 'Not found.');
       }
-      const methods = reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
+      const methods = isGeocoding ? ['POST'] : reviewId ? ['GET', 'POST'] : isAdmin || isLocationOptions ? ['GET'] : isProvider ? ['GET', 'POST'] : isProfile || isLocation ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
       if (!methods.includes(request.method ?? '')) {
         response.setHeader('Allow', methods.join(', '));
         throw new AuthError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
@@ -86,17 +93,28 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       }
       const token = tokenFromCookie(request.headers.cookie, cookieName);
       const database = getDatabase();
-      if (path === '/api/auth/session' || isProfile || isProvider || isAdmin || isLocation || isLocationOptions) {
+      if (path === '/api/auth/session' || isProfile || isProvider || isAdmin || isLocation || isLocationOptions || isGeocoding) {
         const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: { ...publicAccount, displayName: true, isAdmin: true } } } }) : null;
         if (!session || session.expiresAt.getTime() <= Date.now()) {
           response.setHeader('Set-Cookie', cookie('', 0));
           throw new AuthError(401, 'UNAUTHENTICATED', 'Please sign in.');
         }
-        if (isLocationOptions) {
+        if (isGeocoding) {
+          const data = await body(request);
+          if (isSearch) {
+            const input = searchInput(data);
+            await limitGeocoding(database, session.account.id);
+            send(200, { results: await lookup.search(input, cancellation.signal, session.account.id) });
+          } else {
+            const input = reverseInput(data);
+            await limitGeocoding(database, session.account.id);
+            send(200, { result: await lookup.reverse(input, cancellation.signal, session.account.id) });
+          }
+        } else if (isLocationOptions) {
           send(200, locationOptions);
         } else if (isLocation) {
           const location = request.method === 'PUT'
-            ? await saveLocation(database, session.account.id, locationInput(await body(request)))
+            ? await saveLocation(database, session.account.id, locationInput(await body(request)), lookup, cancellation.signal)
             : await readLocation(database, session.account.id);
           send(200, { location });
         } else if (isAdmin) {
@@ -161,8 +179,9 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       response.setHeader('Set-Cookie', cookie(newToken, SESSION_SECONDS));
       send(path === '/api/auth/register' ? 201 : 200, { user });
     } catch (error) {
+      if (cancellation.signal.aborted && response.destroyed) return;
       if (error instanceof AuthError) {
-        if (error.status === 429) response.setHeader('Retry-After', '900');
+        if (error.status === 429) response.setHeader('Retry-After', error instanceof GeocodingError ? String(error.retryAfter) : '900');
         send(error.status, { error: error.code, message: error.message });
       } else if (path === '/api/auth/register' && typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
         send(409, { error: 'REGISTRATION_UNAVAILABLE', message: 'Unable to create this account. Try signing in.' });
@@ -174,6 +193,6 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
         console.error('Account operation failed:', code, timedOut ? 'TIMEOUT' : 'OTHER');
         send(503, { error: 'SERVICE_UNAVAILABLE', message: 'The account service is temporarily unavailable. Please try again.' });
       }
-    }
+    } finally { response.removeListener('close', cancel); }
   };
 }

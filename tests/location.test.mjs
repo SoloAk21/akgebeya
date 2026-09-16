@@ -7,6 +7,12 @@ const valid = { countryId: 'ET', regionId: 'addis-ababa', cityId: 'addis-ababa-c
 
 test('location validates the complete hierarchy and explicit confirmation without coercion', () => {
   assert.deepEqual(locationInput(valid), valid);
+  for (const addressLanguage of ['en', 'am']) {
+    assert.deepEqual(locationInput({ ...valid, addressLanguage }), { ...valid, addressLanguage });
+  }
+  for (const addressLanguage of [null, ['en'], 'fr', '', true]) {
+    assert.throws(() => locationInput({ ...valid, addressLanguage }), error => error.status === 400);
+  }
   for (const subcityId of ['addis-ketema', 'akaki-kality', 'arada', 'bole', 'gulele', 'kirkos',
     'kolfe-keranio', 'lideta', 'nifas-silk-lafto', 'yeka', 'lemi-kura']) {
     assert.equal(locationInput({ ...valid, subcityId }).subcityId, subcityId);

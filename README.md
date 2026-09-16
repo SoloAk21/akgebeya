@@ -96,6 +96,13 @@ are not verified. Run `npm run test:location` for real PostGIS persistence and
 authorization checks. See [the location guide](docs/location-selection.md) for
 sample data, map attribution, limitations, and verification instructions.
 
+The advanced location picker adds Geoapify autocomplete and reverse lookup,
+optional device location, a draggable pin, and recent selections kept in memory.
+Set the server-only `GEOAPIFY_API_KEY` in `.env` to enable address lookup; manual
+coordinates remain available without it. See [advanced location setup and verification](docs/advanced-location.md).
+Live checks found Addis Ababa landmarks and matched “Bolle” to Bole; the Amharic
+query “ቦሌ” returned no suggestions. Coverage varies with the provider’s map data.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 
