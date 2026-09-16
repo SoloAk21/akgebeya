@@ -17,7 +17,18 @@
       <section aria-labelledby="account-heading" id="account-section">
         <h2 id="account-heading">Sign in</h2>
         <p id="auth-status" role="status" aria-live="polite">Checking your session…</p>
-        <div id="signed-in" hidden><p>Signed in as <strong id="account-email"></strong></p><button id="logout" type="button">Sign out</button></div>
+        <div id="signed-in" hidden>
+          <p>Signed in as <strong id="account-email"></strong></p>
+          <form id="profile-form">
+            <label for="display-name">Display name</label>
+            <input id="display-name" name="displayName" autocomplete="name" maxlength="80" required aria-describedby="profile-help" disabled />
+            <p id="profile-help" class="note">The name you use on AkGebeya. Use 1–80 characters.</p>
+            <button id="profile-save" type="submit" disabled>Save profile</button>
+          </form>
+          <p id="profile-status" role="status" aria-live="polite"></p>
+          <button id="profile-retry" type="button" class="secondary" hidden>Reload profile</button>
+          <button id="logout" type="button" class="secondary">Sign out</button>
+        </div>
         <form id="auth-form" hidden>
           <label for="email">Email address</label>
           <input id="email" name="email" type="email" autocomplete="username" maxlength="254" required />

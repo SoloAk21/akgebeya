@@ -22,6 +22,7 @@ model FoundationProbe {
 model Account {
   id           String    @id @default(uuid()) @db.Uuid
   email        String    @unique @db.VarChar(254)
+  displayName  String?   @db.VarChar(80)
   passwordHash String    @db.VarChar(256)
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   sessions     Session[]

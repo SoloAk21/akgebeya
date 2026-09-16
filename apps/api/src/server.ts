@@ -6,7 +6,7 @@ export function createHealthServer(readiness?: () => Promise<void>, auth?: (requ
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     const path = request.url?.split('?')[0];
-    if (path?.startsWith('/api/auth/') && auth) {
+    if ((path?.startsWith('/api/auth/') || path === '/api/profile') && auth) {
       void auth(request, response);
       return;
     }

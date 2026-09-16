@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { PrismaClient } from './generated/prisma/client.js';
+import { profileInput } from './profile.js';
 import { AuthError, credentials, digest, hashPassword, sessionToken, tokenFromCookie, verifyPassword } from './auth-security.js';
 
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
@@ -60,26 +61,34 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
     const path = request.url?.split('?')[0];
     const send = (status: number, data: unknown) => { response.writeHead(status); response.end(JSON.stringify(data)); };
     try {
-      if (!['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
+      const isProfile = path === '/api/profile';
+      if (!isProfile && !['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/auth/logout'].includes(path ?? '')) {
         throw new AuthError(404, 'NOT_FOUND', 'Not found.');
       }
-      const expectedMethod = path === '/api/auth/session' ? 'GET' : 'POST';
-      if (request.method !== expectedMethod) {
-        response.setHeader('Allow', expectedMethod);
+      const methods = isProfile ? ['GET', 'PUT'] : [path === '/api/auth/session' ? 'GET' : 'POST'];
+      if (!methods.includes(request.method ?? '')) {
+        response.setHeader('Allow', methods.join(', '));
         throw new AuthError(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
       }
-      if (request.method === 'POST' && request.headers.origin !== options.origin) {
+      if (request.method !== 'GET' && request.headers.origin !== options.origin) {
         throw new AuthError(403, 'ORIGIN_REJECTED', 'Request origin is not allowed.');
       }
       const token = tokenFromCookie(request.headers.cookie, cookieName);
       const database = getDatabase();
-      if (path === '/api/auth/session') {
-        const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: publicAccount } } }) : null;
+      if (path === '/api/auth/session' || isProfile) {
+        const session = token ? await database.session.findUnique({ where: { tokenHash: digest(token) }, include: { account: { select: { ...publicAccount, displayName: true } } } }) : null;
         if (!session || session.expiresAt.getTime() <= Date.now()) {
           response.setHeader('Set-Cookie', cookie('', 0));
           throw new AuthError(401, 'UNAUTHENTICATED', 'Please sign in.');
         }
-        send(200, { user: session.account });
+        if (isProfile) {
+          const profile = request.method === 'PUT'
+            ? await database.account.update({ where: { id: session.account.id }, data: profileInput(await body(request)), select: { ...publicAccount, displayName: true } })
+            : session.account;
+          send(200, { profile });
+        } else {
+          send(200, { user: { id: session.account.id, email: session.account.email } });
+        }
         return;
       }
       if (path === '/api/auth/logout') {
@@ -123,7 +132,7 @@ export function createAuthHandler(getDatabase: () => PrismaClient, options: Auth
       } else if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
         send(409, { error: 'REGISTRATION_UNAVAILABLE', message: 'Unable to create this account. Try signing in.' });
       } else {
-        send(503, { error: 'AUTH_UNAVAILABLE', message: 'Sign-in is temporarily unavailable. Please try again.' });
+        send(503, { error: 'SERVICE_UNAVAILABLE', message: 'The account service is temporarily unavailable. Please try again.' });
       }
     }
   };

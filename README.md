@@ -71,6 +71,11 @@ legacy-account linking, and Telegram sign-in are not implemented in this milesto
 Run `npm run test:auth` against the development database for the real authentication
 integration test.
 
+Feature 5 adds a saved display name to each account. Sign in, edit **Display name**,
+and choose **Save profile**; the name persists across refresh and later sign-ins.
+Run `npm run test:profile` for real database and account-isolation checks. See
+[the profile guide](docs/profile.md) for API commands and browser verification.
+
 Build output is written to each workspace's `dist/` directory and is excluded from Git.
 Keep credentials in untracked environment files; never commit real secrets.
 
